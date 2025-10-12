@@ -1,0 +1,48 @@
+{
+  "name": "동파법 SOXL 자동매매",
+  "short_name": "동파법",
+  "description": "실시간 SOXL 동파법 매매 신호 및 백테스팅",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1890ff",
+  "background_color": "#ffffff",
+  "categories": ["finance", "productivity"],
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192", 
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "실시간 매매",
+      "short_name": "매매",
+      "description": "실시간 SOXL 매매 신호 확인",
+      "url": "/?tab=live",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "백테스팅",
+      "short_name": "백테스트",
+      "description": "과거 성과 분석",
+      "url": "/?tab=backtest", 
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
