@@ -1,0 +1,485 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* 반응형 테이블 */
+.responsive-table {
+  overflow-x: auto;
+}
+
+.responsive-table table {
+  min-width: 600px;
+}
+
+/* 카드 스타일 */
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200;
+}
+
+.card-header {
+  @apply border-b border-gray-200 pb-4 mb-4;
+}
+
+.card-title {
+  @apply text-lg font-semibold text-gray-800;
+}
+
+/* 버튼 스타일 */
+.btn-primary {
+  @apply bg-primary-500 text-white px-4 py-2 rounded-md hover:bg-primary-600 transition-colors duration-200 font-medium;
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors duration-200 font-medium;
+}
+
+.btn-success {
+  @apply bg-success-500 text-white px-4 py-2 rounded-md hover:bg-success-600 transition-colors duration-200 font-medium;
+}
+
+.btn-danger {
+  @apply bg-error-500 text-white px-4 py-2 rounded-md hover:bg-error-600 transition-colors duration-200 font-medium;
+}
+
+/* 상태 배지 */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-buy {
+  @apply bg-success-100 text-success-800;
+}
+
+.badge-sell {
+  @apply bg-error-100 text-error-800;
+}
+
+.badge-hold {
+  @apply bg-gray-100 text-gray-800;
+}
+
+/* 로딩 스피너 */
+.spinner {
+  @apply animate-spin rounded-full border-4 border-gray-200 border-t-primary-500;
+}
+
+/* 동파법 전용 스타일 */
+.dongpa-trade-table {
+  font-size: 12px;
+}
+
+.dongpa-trade-table .ant-table-thead > tr > th {
+  font-size: 11px;
+  padding: 8px 6px;
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.dongpa-trade-table .ant-table-tbody > tr > td {
+  padding: 6px 6px;
+  font-size: 11px;
+}
+
+.dongpa-trade-table .ant-table-tbody > tr:hover > td {
+  background: #e6f7ff;
+}
+
+.dongpa-trade-table .ant-tag {
+  margin: 0;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 1.2;
+  border-radius: 2px;
+}
+
+/* 신호 패널 애니메이션 */
+.signal-active {
+  animation: signal-pulse 2s infinite;
+}
+
+@keyframes signal-pulse {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.7); 
+  }
+  70% { 
+    box-shadow: 0 0 0 10px rgba(24, 144, 255, 0); 
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(24, 144, 255, 0); 
+  }
+}
+
+.signal-sell {
+  animation: signal-pulse-red 2s infinite;
+}
+
+@keyframes signal-pulse-red {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(245, 34, 45, 0.7); 
+  }
+  70% { 
+    box-shadow: 0 0 0 10px rgba(245, 34, 45, 0); 
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(245, 34, 45, 0); 
+  }
+}
+
+/* 반응형 테이블 */
+@media (max-width: 768px) {
+  .dongpa-trade-table .ant-table-thead > tr > th,
+  .dongpa-trade-table .ant-table-tbody > tr > td {
+    padding: 4px 2px;
+    font-size: 10px;
+  }
+  
+  .dongpa-trade-table .ant-tag {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+}
+
+/* 통계 카드 */
+.ant-statistic-content {
+  display: flex;
+  align-items: center;
+}
+
+.ant-statistic-content-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* 알림 스타일 */
+.ant-alert-info {
+  border: 1px solid #d9d9d9;
+}
+
+.ant-alert-warning {
+  border: 1px solid #d48806;
+}
+
+.ant-alert-error {
+  border: 1px solid #ff4d4f;
+}
+
+/* ===== 모바일 최적화 시작 ===== */
+
+/* 모바일 최적화 (768px 이하) */
+@media (max-width: 768px) {
+  /* 헤더 최적화 */
+  .ant-layout-header {
+    padding: 0 8px !important;
+    height: auto !important;
+    line-height: normal !important;
+  }
+
+  /* 탭 버튼 크기 조정 */
+  .ant-tabs-tab {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+  }
+
+  /* 카드 간격 조정 */
+  .ant-card {
+    margin-bottom: 12px !important;
+  }
+
+  .ant-card-head-title {
+    font-size: 16px !important;
+  }
+
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* 테이블 가로 스크롤 */
+  .ant-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .ant-table {
+    font-size: 12px !important;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 8px 4px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 8px 4px !important;
+  }
+
+  /* Progress Bar 크기 */
+  .ant-progress-line {
+    font-size: 12px !important;
+  }
+
+  /* 폼 최적화 */
+  .ant-form-item {
+    margin-bottom: 16px !important;
+  }
+
+  /* InputNumber 모바일 최적화 */
+  .ant-input-number {
+    width: 100% !important;
+  }
+
+  /* Alert 메시지 */
+  .ant-alert {
+    font-size: 13px !important;
+  }
+
+  .ant-alert ul {
+    font-size: 12px !important;
+  }
+
+  /* Statistic 크기 조정 */
+  .ant-statistic-title {
+    font-size: 12px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 20px !important;
+  }
+
+  /* Space 컴포넌트 */
+  .ant-space-vertical {
+    width: 100% !important;
+  }
+
+  /* TodayOverview 모바일 레이아웃 */
+  .today-overview .ant-row {
+    flex-direction: column;
+  }
+
+  .today-overview .ant-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 16px;
+  }
+
+  /* Content 패딩 조정 */
+  .ant-layout-content {
+    padding: 12px !important;
+  }
+
+  /* Row 간격 조정 */
+  .ant-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .ant-col {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* 터치 영역 최적화 */
+  button, .ant-btn, a, .ant-tabs-tab {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Space 컴포넌트 간격 */
+  .ant-space-vertical > .ant-space-item {
+    margin-bottom: 12px !important;
+  }
+
+  /* 폼 레이블 */
+  .ant-form-item-label {
+    padding-bottom: 4px !important;
+  }
+
+  .ant-form-item-label > label {
+    font-size: 14px !important;
+  }
+
+  /* Select, Input 높이 조정 */
+  .ant-select-selector,
+  .ant-input,
+  .ant-picker {
+    min-height: 40px !important;
+  }
+}
+
+/* 초소형 화면 최적화 (480px 이하) */
+@media (max-width: 480px) {
+  .ant-tabs-tab {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .ant-card-head-title {
+    font-size: 14px !important;
+  }
+
+  .ant-statistic-title {
+    font-size: 11px !important;
+  }
+
+  .ant-statistic-content {
+    font-size: 18px !important;
+  }
+
+  .ant-btn-lg {
+    height: 40px !important;
+    font-size: 14px !important;
+  }
+
+  /* 테이블 매우 작게 */
+  .ant-table {
+    font-size: 11px !important;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 6px 2px !important;
+  }
+
+  /* Tag 크기 조정 */
+  .ant-tag {
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+  }
+
+  /* 타이틀 크기 */
+  h1, .ant-typography h1 {
+    font-size: 20px !important;
+  }
+
+  h3, .ant-typography h3 {
+    font-size: 16px !important;
+  }
+}
+
+/* 태블릿 최적화 (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .ant-table {
+    font-size: 13px !important;
+  }
+
+  .ant-card-body {
+    padding: 16px !important;
+  }
+}
+
+/* 가로 모드 최적화 */
+@media (orientation: landscape) and (max-width: 896px) {
+  .ant-layout-header {
+    padding: 8px 12px !important;
+  }
+
+  .ant-layout-content {
+    padding: 16px !important;
+  }
+}
+
+/* PWA 노치 대응 (iPhone X 이상) */
+@supports (padding: max(0px)) {
+  .ant-layout {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* 모달/팝업 최적화 */
+@media (max-width: 768px) {
+  .ant-modal {
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+  }
+
+  .ant-modal-body {
+    padding: 16px !important;
+  }
+
+  .ant-popover {
+    max-width: calc(100vw - 32px) !important;
+  }
+}
+
+/* 에러/성공 상태 */
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-input-number,
+.ant-form-item-has-error .ant-picker {
+  border-color: #ff4d4f !important;
+}
+
+.ant-form-item-has-success .ant-input,
+.ant-form-item-has-success .ant-input-number {
+  border-color: #52c41a !important;
+}
+
+/* ===== 모바일 최적화 끝 ===== */
