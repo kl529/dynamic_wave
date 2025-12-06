@@ -1,118 +1,128 @@
 'use client'
 
 import { DongpaConfig, MarketData, DongpaTrade, TodaySignal } from '@/types';
+import { getWeeklyRSIModeInfo, enrichDataWithWeeklyRSIMode, WeeklyModeInfo } from '@/utils/rsiCalculator';
+import { getModeConfig, getTotalFeeRate, calculateTradingDays } from '@/utils/tradingConfig';
 
 export class DongpaEngine {
   private config: DongpaConfig;
-  private fees = {
-    commission: 0.00044, // 0.044% 거래 수수료
-    secFee: 0.0000278    // SEC 수수료 0.00278%
-  };
+  private autoMode: boolean;  // RSI 기반 자동 모드 전환
 
-  constructor(config: DongpaConfig) {
+  constructor(config: DongpaConfig, autoMode: boolean = true) {
     this.config = config;
+    this.autoMode = autoMode;  // 기본값: RSI 자동 모드 활성화
   }
 
-  // 총 수수료율 (편도)
-  private get totalFeeRate(): number {
-    return this.fees.commission + this.fees.secFee; // 0.047%
+  /**
+   * 자동 모드 설정 변경
+   */
+  public setAutoMode(enabled: boolean): void {
+    this.autoMode = enabled;
   }
 
-  // 모드별 설정
-  private getModeConfig(mode: 'safe' | 'aggressive') {
-    const configs = {
-      safe: {
-        sellTarget: 0.002,    // 0.2% 수익에서 매도
-        buyTarget: 0.03,      // 3.0% 하락에서 매수
-        profitReinvest: 0.8,  // 이익복리 80%
-        lossReinvest: 0.3     // 손실복리 30%
-      },
-      aggressive: {
-        sellTarget: 0.025,    // 2.5% 수익에서 매도
-        buyTarget: 0.05,      // 5.0% 하락에서 매수
-        profitReinvest: 0.8,  // 이익복리 80%
-        lossReinvest: 0.3     // 손실복리 30%
-      }
-    };
-    
-    return configs[mode];
+  /**
+   * 현재 RSI 기반 모드 정보 반환
+   */
+  public getRSIModeInfo(priceData: MarketData[]): WeeklyModeInfo {
+    return getWeeklyRSIModeInfo(priceData);
   }
 
-  // 오늘 매수 신호 계산
+  /**
+   * 매수 조건 확인
+   * - 전일 종가 대비 오늘 종가의 변동률이 목표 상승률 미만인지 체크
+   * - 체결가는 오늘 종가
+   */
   public getTodayBuySignal(config: {
     초기자금: number;
     분할횟수: number;
     매매모드: 'safe' | 'aggressive';
-    현재가: number;
-    변동률: number;
+    오늘종가: number;
+    전일종가: number;
     예수금: number;
   }): {
     신호: 'BUY' | 'HOLD';
     매수량: number;
-    매수가: number;
+    매수가: number;  // LOC 체결가 (오늘 종가)
     매수금액: number;
     수수료: number;
-    다음매수가: number;
+    상승률: number;
+    목표상승률: number;
     메시지: string;
   } {
-    const { 초기자금, 분할횟수, 매매모드, 현재가, 변동률, 예수금 } = config;
-    const modeConfig = this.getModeConfig(매매모드);
-    
-    // 매수 조건: 목표 하락률 이상 && 하락 && 충분한 현금
-    const 매수조건충족 = Math.abs(변동률) >= modeConfig.buyTarget * 100 && 
-                      변동률 < 0;
-    
+    const { 초기자금, 분할횟수, 매매모드, 오늘종가, 전일종가, 예수금 } = config;
+    const modeConfig = getModeConfig(매매모드);
+
+    // 전일 종가 대비 오늘 종가 변동률 계산
+    const 변동률 = ((오늘종가 - 전일종가) / 전일종가);
+    const 목표상승률 = modeConfig.buyTarget;
+
     // 분할금액 계산
     const 분할금액 = 초기자금 / 분할횟수;
-    const 다음매수가 = 현재가 * (1 - modeConfig.buyTarget);
-    
-    if (매수조건충족 && 예수금 >= 분할금액) {
-      const 매수량 = Math.floor(분할금액 / 현재가);
-      const 매수금액 = 매수량 * 현재가;
-      const 수수료 = 매수금액 * this.totalFeeRate;
-      
-      return {
-        신호: 'BUY',
-        매수량,
-        매수가: 현재가,
-        매수금액,
-        수수료,
-        다음매수가,
-        메시지: `🚀 ${매수량}주 매수 신호! @$${현재가.toFixed(2)} (변동률: ${변동률.toFixed(2)}%)`
-      };
+
+    // 매수 조건: 변동률 < 목표상승률 (목표보다 낮으면 매수)
+    if (변동률 < 목표상승률 && 예수금 >= 분할금액) {
+      // LOC: 오늘 종가에 매수
+      const 매수량 = Math.floor(분할금액 / 오늘종가);
+      const 매수금액 = 매수량 * 오늘종가;
+      const 수수료 = 매수금액 * getTotalFeeRate();
+
+      if (예수금 >= 매수금액 + 수수료) {
+        return {
+          신호: 'BUY',
+          매수량,
+          매수가: 오늘종가,
+          매수금액,
+          수수료,
+          상승률: 변동률 * 100,  // 실제로는 변동률
+          목표상승률: 목표상승률 * 100,
+          메시지: `🔻 매수: ${매수량}주 @$${오늘종가.toFixed(2)} (변동률 ${(변동률 * 100).toFixed(2)}% < 목표 ${(목표상승률 * 100).toFixed(2)}%)`
+        };
+      }
     }
-    
+
     return {
       신호: 'HOLD',
       매수량: 0,
       매수가: 0,
       매수금액: 0,
       수수료: 0,
-      다음매수가,
-      메시지: `$${다음매수가.toFixed(2)} 이하 시 매수 (${modeConfig.buyTarget * 100}% 하락 필요)`
+      상승률: 변동률 * 100,
+      목표상승률: 목표상승률 * 100,
+      메시지: 변동률 >= 목표상승률
+        ? `대기: 변동률 ${(변동률 * 100).toFixed(2)}% >= 목표 ${(목표상승률 * 100).toFixed(2)}%`
+        : `현금 부족 (필요: $${분할금액.toFixed(2)}, 보유: $${예수금.toFixed(2)})`
     };
   }
 
-  // 오늘 매도 신호 계산
+  /**
+   * 매도 조건 확인 (종가매매 LOC 방식)
+   * - 평단가 대비 오늘 종가가 목표 수익률 이상인지 체크
+   * - 체결가는 오늘 종가(LOC)
+   * - 손절: 최대 보유기간 도달 시
+   */
   public getTodaySellSignal(config: {
     매매모드: 'safe' | 'aggressive';
-    현재가: number;
+    오늘종가: number;
     평단가: number;
     보유량: number;
+    매수일자: string;
+    오늘날짜: string;
   }): {
-    신호: 'SELL' | 'HOLD' | 'NO_POSITION';
+    신호: 'SELL' | 'STOP_LOSS' | 'HOLD' | 'NO_POSITION';
     매도량: number;
-    매도가: number;
+    매도가: number;  // LOC 체결가 (오늘 종가)
     매도금액: number;
     수수료: number;
-    예상수익: number;
-    목표가: number;
-    필요상승률: number;
+    실현수익: number;
+    수익률: number;
+    목표수익률: number;
+    거래일보유기간: number;
     메시지: string;
+    손절여부: boolean;
   } {
-    const { 매매모드, 현재가, 평단가, 보유량 } = config;
-    const modeConfig = this.getModeConfig(매매모드);
-    
+    const { 매매모드, 오늘종가, 평단가, 보유량, 매수일자, 오늘날짜 } = config;
+    const modeConfig = getModeConfig(매매모드);
+
     if (보유량 === 0 || 평단가 === 0) {
       return {
         신호: 'NO_POSITION',
@@ -120,52 +130,86 @@ export class DongpaEngine {
         매도가: 0,
         매도금액: 0,
         수수료: 0,
-        예상수익: 0,
-        목표가: 0,
-        필요상승률: 0,
-        메시지: '보유 종목 없음'
+        실현수익: 0,
+        수익률: 0,
+        목표수익률: modeConfig.sellTarget * 100,
+        거래일보유기간: 0,
+        메시지: '보유 종목 없음',
+        손절여부: false
       };
     }
-    
-    const 목표가 = 평단가 * (1 + modeConfig.sellTarget);
-    const 필요상승률 = ((목표가 - 현재가) / 현재가) * 100;
-    
-    if (현재가 >= 목표가) {
-      const 매도금액 = 보유량 * 현재가;
-      const 수수료 = 매도금액 * this.totalFeeRate;
-      const 매수원가 = 보유량 * 평단가;
-      const 예상수익 = 매도금액 - 매수원가 - 수수료;
-      
+
+    // 거래일 기준 보유기간 계산 (주말 제외)
+    const 거래일보유기간 = calculateTradingDays(매수일자, 오늘날짜);
+
+    // 평단가 대비 오늘 종가 수익률 계산
+    const 수익률 = (오늘종가 - 평단가) / 평단가;
+    const 목표수익률 = modeConfig.sellTarget;
+
+    // LOC: 오늘 종가에 매도
+    const 매도금액 = 보유량 * 오늘종가;
+    const 수수료 = 매도금액 * getTotalFeeRate();
+    const 매수원가 = 보유량 * 평단가;
+    const 실현수익 = 매도금액 - 매수원가 - 수수료;
+
+    // 조건 1: 수익 목표 달성 → LOC 매도
+    if (수익률 >= 목표수익률) {
       return {
         신호: 'SELL',
         매도량: 보유량,
-        매도가: 현재가,
+        매도가: 오늘종가,  // LOC 체결가
         매도금액,
         수수료,
-        예상수익,
-        목표가,
-        필요상승률: 0,
-        메시지: `💰 ${보유량}주 전량 매도! 예상수익: $${예상수익.toFixed(2)} (${((예상수익 / 매수원가) * 100).toFixed(2)}%)`
+        실현수익,
+        수익률: 수익률 * 100,
+        목표수익률: 목표수익률 * 100,
+        거래일보유기간,
+        메시지: `🔺 LOC 매도: ${보유량}주 @$${오늘종가.toFixed(2)} (수익률 ${(수익률 * 100).toFixed(2)}% ≥ 목표 ${(목표수익률 * 100).toFixed(2)}%)`,
+        손절여부: false
       };
     }
-    
+
+    // 조건 2: 최대 보유기간 도달 → LOC 손절
+    if (거래일보유기간 >= modeConfig.holdingDays) {
+      return {
+        신호: 'STOP_LOSS',
+        매도량: 보유량,
+        매도가: 오늘종가,  // LOC 체결가
+        매도금액,
+        수수료,
+        실현수익,
+        수익률: 수익률 * 100,
+        목표수익률: 목표수익률 * 100,
+        거래일보유기간,
+        메시지: `⚠️ LOC 손절: ${보유량}주 @$${오늘종가.toFixed(2)} (보유 ${거래일보유기간}일 ≥ ${modeConfig.holdingDays}일)`,
+        손절여부: true
+      };
+    }
+
+    // 조건 미충족 → 대기
     return {
       신호: 'HOLD',
       매도량: 0,
       매도가: 0,
       매도금액: 0,
       수수료: 0,
-      예상수익: 0,
-      목표가,
-      필요상승률,
-      메시지: `$${목표가.toFixed(2)} 도달 시 매도 (${필요상승률.toFixed(2)}% 상승 필요)`
+      실현수익: 0,
+      수익률: 수익률 * 100,
+      목표수익률: 목표수익률 * 100,
+      거래일보유기간,
+      메시지: `대기: 수익률 ${(수익률 * 100).toFixed(2)}% < 목표 ${(목표수익률 * 100).toFixed(2)}% (보유 ${거래일보유기간}/${modeConfig.holdingDays}일)`,
+      손절여부: false
     };
   }
 
-  // 일별 매매 기록 생성 (엑셀 로직 완전 구현)
+  /**
+   * 일별 매매 기록 생성 (종가매매 LOC 방식)
+   * - 매수/매도 체결가는 항상 오늘 종가
+   */
   public generateDailyTradeRecord(config: {
     거래일자: string;
     종가: number;
+    전일종가: number;
     매매모드: 'safe' | 'aggressive';
     이전기록?: DongpaTrade | null;
     초기자금: number;
@@ -173,77 +217,85 @@ export class DongpaEngine {
     갱신주기: number; // 기본 10일
   }): DongpaTrade {
     const {
-      거래일자, 종가, 매매모드, 이전기록, 
+      거래일자, 종가, 전일종가, 매매모드, 이전기록,
       초기자금, 분할횟수, 갱신주기 = 10
     } = config;
-    
-    const modeConfig = this.getModeConfig(매매모드);
-    
+
+    const modeConfig = getModeConfig(매매모드);
+
     // 전일 대비 변동률 계산
-    const 변동률 = 이전기록 ? 
-      (종가 - 이전기록.종가) / 이전기록.종가 * 100 : 0;
-    
+    const 변동률 = ((종가 - 전일종가) / 전일종가) * 100;
+
     // 자금 갱신 체크 (갱신주기일마다)
-    const 거래일수 = 이전기록 ? this.getBusinessDaysDiff(이전기록.거래일자, 거래일자) : 0;
+    const 거래일수 = 이전기록 ? calculateTradingDays(이전기록.거래일자, 거래일자) : 0;
     const 자금갱신 = 거래일수 > 0 && 거래일수 % 갱신주기 === 0;
-    
+
     // 현재 시드 계산
     let 현재시드 = 초기자금;
     if (이전기록) {
       현재시드 = 자금갱신 ? 초기자금 + 이전기록.누적손익 : 이전기록.시드;
     }
-    
+
     const 매수예정 = 현재시드 / 분할횟수;
-    const LOC매수목표 = 종가 * (1 - modeConfig.buyTarget);
-    const 목표량 = Math.floor(매수예정 / 종가);
-    
+
     // 현재 포트폴리오 상태
     const 현재예수금 = 이전기록?.예수금 || 초기자금;
     const 현재보유량 = 이전기록?.보유량 || 0;
     const 현재평단가 = 이전기록?.평단가 || 0;
-    
-    // 매수 신호 체크
+    const 매수일자 = 이전기록?.매수일자 || '';
+
+    // 매수 분가 = 전일 종가 × (1 + 목표상승률) - 표시용
+    const 매수지정가 = 전일종가 * (1 + modeConfig.buyTarget);
+    const 목표량 = Math.floor(매수예정 / 매수지정가);
+
+    // 매수 신호 체크 (종가매매 LOC)
     const 매수신호 = this.getTodayBuySignal({
       초기자금: 현재시드,
       분할횟수,
       매매모드,
-      현재가: 종가,
-      변동률,
+      오늘종가: 종가,
+      전일종가,
       예수금: 현재예수금
     });
-    
-    // 매도 신호 체크
+
+    // 매도 신호 체크 (종가매매 LOC + 손절)
     const 매도신호 = this.getTodaySellSignal({
       매매모드,
-      현재가: 종가,
+      오늘종가: 종가,
       평단가: 현재평단가,
-      보유량: 현재보유량
+      보유량: 현재보유량,
+      매수일자: 매수일자,
+      오늘날짜: 거래일자
     });
-    
+
     // 거래 실행
     let 매수가 = 0, 매수량 = 0, 매수금액 = 0, 매수수수료 = 0;
+    let 새매수일자 = 매수일자;
     let 매도일 = '', 매도가 = 0, 매도량 = 0, 매도금액 = 0, 매도수수료 = 0;
-    let 당일실현손익금액 = 0, 손익률 = 0;
-    
-    // 매수 실행
-    if (매수신호.신호 === 'BUY') {
-      매수가 = 매수신호.매수가;
+    let 당일실현손익금액 = 0, 손익률 = 0, 손절여부 = false;
+
+    // 매수 실행 (LOC: 오늘 종가에 체결)
+    if (매수신호.신호 === 'BUY' && 현재보유량 === 0) {
+      매수가 = 매수신호.매수가;  // LOC 체결가 (오늘 종가)
       매수량 = 매수신호.매수량;
       매수금액 = 매수신호.매수금액;
       매수수수료 = 매수신호.수수료;
+      새매수일자 = 거래일자; // 매수일 기록
     }
-    
-    // 매도 실행
-    if (매도신호.신호 === 'SELL') {
+
+    // 매도 실행 (LOC: 오늘 종가에 체결)
+    if (매도신호.신호 === 'SELL' || 매도신호.신호 === 'STOP_LOSS') {
       매도일 = 거래일자;
-      매도가 = 매도신호.매도가;
+      매도가 = 매도신호.매도가;  // LOC 체결가 (오늘 종가)
       매도량 = 매도신호.매도량;
       매도금액 = 매도신호.매도금액;
       매도수수료 = 매도신호.수수료;
-      당일실현손익금액 = 매도신호.예상수익;
-      손익률 = (당일실현손익금액 / (매도량 * 현재평단가)) * 100;
+      당일실현손익금액 = 매도신호.실현수익;
+      손익률 = 매도신호.수익률;
+      손절여부 = 매도신호.손절여부;
+      새매수일자 = ''; // 매도 후 매수일 초기화
     }
-    
+
     // 복리 계산
     let 갱신복리금액 = 0;
     if (당일실현손익금액 !== 0) {
@@ -251,13 +303,13 @@ export class DongpaEngine {
         당일실현손익금액 * modeConfig.profitReinvest :  // 이익복리
         당일실현손익금액 * modeConfig.lossReinvest;     // 손실복리
     }
-    
+
     const 누적손익 = (이전기록?.누적손익 || 0) + 갱신복리금액;
-    
+
     // 포트폴리오 업데이트
     const 새예수금 = 현재예수금 - 매수금액 - 매수수수료 + 매도금액 - 매도수수료;
     const 새보유량 = 현재보유량 + 매수량 - 매도량;
-    
+
     // 평단가 재계산
     let 새평단가 = 0;
     if (매수량 > 0 && 새보유량 > 0) {
@@ -267,29 +319,39 @@ export class DongpaEngine {
     } else if (새보유량 > 0) {
       새평단가 = 현재평단가;
     }
-    
+
+    // 목표가 = 평단가 × (1 + 목표수익률)
+    const 목표가 = 새평단가 > 0 ? 새평단가 * (1 + modeConfig.sellTarget) : 0;
+
+    // 거래일 보유기간 계산
+    const 거래일보유기간 = 새매수일자 ? calculateTradingDays(새매수일자, 거래일자) : 0;
+
     const 평가금 = 새보유량 * 종가;
     const 총자산 = 새예수금 + 평가금;
     const 수익률 = ((총자산 - 초기자금) / 초기자금) * 100;
-    
+
     // DD 계산
     const 최고자산 = Math.max(총자산, 이전기록?.최고자산 || 초기자금);
     const DD = 최고자산 > 총자산 ? ((최고자산 - 총자산) / 최고자산) * 100 : 0;
-    
+
     const 거래기록: DongpaTrade = {
       거래일자,
       종가,
       매매모드,
       변동률,
       매수예정,
-      LOC매수목표,
+      매수지정가,  // 전일 종가 × (1 + 목표상승률)
       목표량,
       매수가,
       매수량,
       매수금액,
       매수수수료,
-      목표가: 새평단가 > 0 ? 새평단가 * (1 + modeConfig.sellTarget) : 0,
-      MOC: 매도신호.신호 === 'SELL' ? 'SELL' : 'HOLD',
+      매도지정가: 목표가,  // 목표 매도가
+      목표가,
+      매수일자: 새매수일자,
+      거래일보유기간,
+      MOC: 매도신호.신호 === 'STOP_LOSS' ? 'STOP_LOSS' :
+           매도신호.신호 === 'SELL' ? 'SELL' : 'HOLD',
       매도일,
       매도가,
       매도량,
@@ -297,11 +359,12 @@ export class DongpaEngine {
       매도수수료,
       당일실현손익금액,
       손익률,
+      손절여부,
       누적손익,
       갱신복리금액,
       자금갱신,
       시드: 현재시드,
-      증액입출금: 0, // 추후 구현 가능
+      증액입출금: 0,
       예수금: 새예수금,
       보유량: 새보유량,
       평가금,
@@ -311,102 +374,112 @@ export class DongpaEngine {
       평단가: 새평단가,
       최고자산
     };
-    
+
     return 거래기록;
   }
 
-  // 여러 일자의 매매 기록 생성
+  /**
+   * 여러 일자의 매매 기록 생성 (종가매매 LOC + RSI 자동 모드)
+   */
   public generateTradeHistory(historicalData: MarketData[]): DongpaTrade[] {
     if (!historicalData.length) return [];
-    
+
+    // RSI 자동 모드일 경우, 주간 RSI 기반 모드 정보 추가
+    const enrichedData = this.autoMode
+      ? enrichDataWithWeeklyRSIMode(historicalData)
+      : historicalData.map(d => ({ ...d, mode: this.config.mode, modeReason: '수동 설정' }));
+
     const trades: DongpaTrade[] = [];
     let 이전기록: DongpaTrade | null = null;
-    
-    historicalData.forEach((dayData) => {
+
+    enrichedData.forEach((dayData, index) => {
+      // 전일 종가 가져오기
+      const 전일종가 = index > 0 ? enrichedData[index - 1].price : dayData.price;
+
+      // 자동 모드일 경우, 주간 RSI 기반 모드 적용
+      const 매매모드 = this.autoMode
+        ? (dayData as { mode: 'safe' | 'aggressive' }).mode
+        : this.config.mode;
+
       const 거래기록 = this.generateDailyTradeRecord({
         거래일자: dayData.date,
         종가: dayData.price,
-        매매모드: this.config.mode,
+        전일종가,
+        매매모드,
         이전기록,
         초기자금: this.config.initialCapital,
         분할횟수: this.config.divisions,
         갱신주기: 10
       });
-      
+
       trades.push(거래기록);
       이전기록 = 거래기록;
     });
-    
+
     return trades;
   }
 
   // 오늘 매매 신호 (실시간)
   public getTodayTradingSignals(
-    현재가: number, 
-    변동률: number, 
+    오늘종가: number,
+    전일종가: number,
+    오늘날짜: string,
     최근거래기록?: DongpaTrade
   ): TodaySignal {
     const 현재예수금 = 최근거래기록?.예수금 || this.config.initialCapital;
     const 현재보유량 = 최근거래기록?.보유량 || 0;
     const 현재평단가 = 최근거래기록?.평단가 || 0;
     const 현재시드 = 최근거래기록?.시드 || this.config.initialCapital;
-    
+    const 매수일자 = 최근거래기록?.매수일자 || '';
+
     const 매수신호 = this.getTodayBuySignal({
       초기자금: 현재시드,
       분할횟수: this.config.divisions,
       매매모드: this.config.mode,
-      현재가,
-      변동률,
+      오늘종가,
+      전일종가,
       예수금: 현재예수금
     });
-    
+
     const 매도신호 = this.getTodaySellSignal({
       매매모드: this.config.mode,
-      현재가,
+      오늘종가,
       평단가: 현재평단가,
-      보유량: 현재보유량
+      보유량: 현재보유량,
+      매수일자,
+      오늘날짜
     });
-    
-    return { 매수신호, 매도신호 };
-  }
 
-  // 영업일 차이 계산 (간단 버전)
-  private getBusinessDaysDiff(startDate: string, endDate: string): number {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // 주말 제외 (간단 계산)
-    const weekdays = Math.floor(diffDays * 5/7);
-    return weekdays;
+    return { 매수신호, 매도신호 };
   }
 
   // 전략 정보 반환
   public getStrategyInfo() {
-    const modeConfig = this.getModeConfig(this.config.mode);
-    
+    const modeConfig = getModeConfig(this.config.mode);
+
     const descriptions = {
       safe: {
         name: "안전모드",
         description: "보수적인 매매로 안정적인 수익 추구",
-        buyCondition: `${modeConfig.buyTarget * 100}% 이상 하락 시 매수`,
-        sellCondition: `${modeConfig.sellTarget * 100}% 수익 시 매도`,
+        buyCondition: `매수 조건: 전일 대비 변동률 < ${modeConfig.buyTarget * 100}% (${modeConfig.buyTarget * 100}% 미만 상승 or 하락)`,
+        sellCondition: `매도 조건: 평단가 대비 ${modeConfig.sellTarget * 100}% 수익 또는 ${modeConfig.holdingDays}거래일 도달 시 손절`,
         riskLevel: "중간",
         expectedReturn: "연 15-25%",
-        maxDrawdown: "20-30%"
+        maxDrawdown: "20-30%",
+        maxHoldingDays: modeConfig.holdingDays
       },
       aggressive: {
-        name: "공세모드", 
+        name: "공세모드",
         description: "적극적인 매매로 높은 수익 추구",
-        buyCondition: `${modeConfig.buyTarget * 100}% 이상 하락 시 매수`,
-        sellCondition: `${modeConfig.sellTarget * 100}% 수익 시 매도`,
+        buyCondition: `매수 조건: 전일 대비 변동률 < ${modeConfig.buyTarget * 100}% (${modeConfig.buyTarget * 100}% 미만 상승 or 하락)`,
+        sellCondition: `매도 조건: 평단가 대비 ${modeConfig.sellTarget * 100}% 수익 또는 ${modeConfig.holdingDays}거래일 도달 시 손절`,
         riskLevel: "높음",
         expectedReturn: "연 30-50%",
-        maxDrawdown: "40-60%"
+        maxDrawdown: "40-60%",
+        maxHoldingDays: modeConfig.holdingDays
       }
     };
-    
+
     return descriptions[this.config.mode];
   }
 }

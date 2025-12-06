@@ -91,8 +91,8 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                   </div>
                   {isPrimarySell && (
                     <div className="text-sm">
-                      🎯 목표가: ${매도신호.목표가.toFixed(2)} | 
-                      예상수익: ${매도신호.예상수익.toFixed(2)}
+                      🎯 목표수익률: {매도신호.목표수익률.toFixed(2)}% |
+                      실현수익: ${매도신호.실현수익.toFixed(2)}
                     </div>
                   )}
                   {isPrimaryBuy && (
@@ -146,7 +146,7 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                     title="매수량"
                     value={매수신호.매수량}
                     suffix="주"
-                    valueStyle={{ 
+                    valueStyle={{
                       fontSize: '16px',
                       color: 매수신호.신호 === 'BUY' ? '#1890ff' : '#8c8c8c'
                     }}
@@ -154,11 +154,11 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="매수가"
+                    title="LOC 체결가"
                     value={매수신호.매수가 || currentPrice}
                     prefix={<DollarOutlined />}
                     precision={2}
-                    valueStyle={{ 
+                    valueStyle={{
                       fontSize: '16px',
                       color: 매수신호.신호 === 'BUY' ? '#1890ff' : '#8c8c8c'
                     }}
@@ -166,21 +166,21 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="매수금액"
-                    value={매수신호.매수금액}
-                    prefix={<DollarOutlined />}
-                    precision={0}
-                    valueStyle={{ 
+                    title="오늘 하락률"
+                    value={매수신호.하락률}
+                    suffix="%"
+                    precision={2}
+                    valueStyle={{
                       fontSize: '16px',
-                      color: 매수신호.신호 === 'BUY' ? '#1890ff' : '#8c8c8c'
+                      color: 매수신호.하락률 <= 매수신호.목표하락률 ? '#52c41a' : '#8c8c8c'
                     }}
                   />
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="다음 매수가"
-                    value={매수신호.다음매수가}
-                    prefix={<DollarOutlined />}
+                    title="목표 하락률"
+                    value={매수신호.목표하락률}
+                    suffix="%"
                     precision={2}
                     valueStyle={{ fontSize: '16px' }}
                   />
@@ -221,7 +221,7 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                     title="매도량"
                     value={매도신호.매도량}
                     suffix="주"
-                    valueStyle={{ 
+                    valueStyle={{
                       fontSize: '16px',
                       color: 매도신호.신호 === 'SELL' ? '#f5222d' : '#8c8c8c'
                     }}
@@ -229,11 +229,11 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="매도가"
+                    title="LOC 체결가"
                     value={매도신호.매도가 || currentPrice}
                     prefix={<DollarOutlined />}
                     precision={2}
-                    valueStyle={{ 
+                    valueStyle={{
                       fontSize: '16px',
                       color: 매도신호.신호 === 'SELL' ? '#f5222d' : '#8c8c8c'
                     }}
@@ -241,34 +241,34 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="예상수익"
-                    value={매도신호.예상수익}
-                    prefix={<DollarOutlined />}
+                    title="현재 수익률"
+                    value={매도신호.수익률}
+                    suffix="%"
                     precision={2}
-                    valueStyle={{ 
+                    valueStyle={{
                       fontSize: '16px',
-                      color: 매도신호.예상수익 >= 0 ? '#52c41a' : '#f5222d'
+                      color: 매도신호.수익률 >= 매도신호.목표수익률 ? '#52c41a' : '#f5222d'
                     }}
                   />
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="목표가"
-                    value={매도신호.목표가}
-                    prefix={<DollarOutlined />}
+                    title="목표 수익률"
+                    value={매도신호.목표수익률}
+                    suffix="%"
                     precision={2}
                     valueStyle={{ fontSize: '16px' }}
                   />
                 </Col>
               </Row>
-              
-              {매도신호.필요상승률 > 0 && (
+
+              {매도신호.수익률 < 매도신호.목표수익률 && 매도신호.신호 !== 'NO_POSITION' && (
                 <div className="bg-orange-50 p-2 rounded">
-                  <Tooltip title="목표가 달성을 위해 필요한 상승률">
+                  <Tooltip title="목표 수익률 달성을 위해 필요한 상승률">
                     <Space>
                       <InfoCircleOutlined className="text-orange-500" />
                       <span className="text-sm">
-                        {매도신호.필요상승률.toFixed(2)}% 더 상승 필요
+                        {(매도신호.목표수익률 - 매도신호.수익률).toFixed(2)}% 더 상승 필요
                       </span>
                     </Space>
                   </Tooltip>

@@ -29,8 +29,8 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
     return tradeHistory.length > 0 ? tradeHistory[tradeHistory.length - 1] : null;
   }, [tradeHistory]);
 
-  // 오늘 매매 신호 계산
-  const todaySignal = useMemo(() => {
+  // 오늘 매매 신호 계산 (종가매매 LOC 방식)
+  const todaySignal = useMemo((): TodaySignal => {
     if (currentPrice === 0) {
       // 기본값 반환
       return {
@@ -40,7 +40,8 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
           매수가: 0,
           매수금액: 0,
           수수료: 0,
-          다음매수가: 0,
+          하락률: 0,
+          목표하락률: -3,
           메시지: '가격 정보 로딩 중...'
         },
         매도신호: {
@@ -49,16 +50,28 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
           매도가: 0,
           매도금액: 0,
           수수료: 0,
-          예상수익: 0,
-          목표가: 0,
-          필요상승률: 0,
-          메시지: '보유 종목 없음'
+          실현수익: 0,
+          수익률: 0,
+          목표수익률: 0.2,
+          거래일보유기간: 0,
+          메시지: '보유 종목 없음',
+          손절여부: false
         }
       };
     }
 
-    return engine.getTodayTradingSignals(currentPrice, changePercent, latestTrade || undefined);
-  }, [engine, currentPrice, changePercent, latestTrade]);
+    // 전일 종가 가져오기
+    const prevClose = historicalData.length > 1
+      ? historicalData[historicalData.length - 2].price
+      : currentPrice;
+
+    return engine.getTodayTradingSignals(
+      currentPrice,
+      prevClose,
+      new Date().toISOString().split('T')[0],
+      latestTrade || undefined
+    );
+  }, [engine, currentPrice, historicalData, latestTrade]);
 
   // 모의 데이터 생성 (테스트용)
   const generateMockData = useCallback((days: number = 90) => {
