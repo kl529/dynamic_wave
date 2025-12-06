@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, InputNumber, Select, Radio, Slider, Typography, Space, Tag, Tooltip } from 'antd';
 import { InfoCircleOutlined, DollarOutlined, SettingOutlined } from '@ant-design/icons';
 import { DongpaConfig } from '@/types';
+import { RSIModeIndicator } from './RSIModeIndicator';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -13,13 +14,29 @@ interface ConfigPanelProps {
   onConfigChange: (newConfig: Partial<DongpaConfig>) => void;
   divisionAmount: number;
   disabled?: boolean;
+  // RSI 관련 props 추가
+  rsiMode?: {
+    mode: 'safe' | 'aggressive';
+    rsi: number | null;
+    prevRSI: number | null;
+    reason: string;
+    signalStrength?: {
+      strength: number;
+      label: string;
+      color: string;
+    };
+    lastUpdateDate?: string; // 마지막 업데이트 날짜
+  };
+  showRSIMode?: boolean; // RSI 모드 표시 여부 (기본: true)
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   config,
   onConfigChange,
   divisionAmount,
-  disabled = false
+  disabled = false,
+  rsiMode,
+  showRSIMode = true
 }) => {
   const modeInfo = {
     safe: {
@@ -112,56 +129,73 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </div>
         </div>
 
-        {/* 투자 모드 설정 */}
-        <div>
-          <Title level={5}>투자 모드</Title>
-          <Radio.Group
-            value={config.mode}
-            onChange={(e) => onConfigChange({ mode: e.target.value })}
-            style={{ width: '100%' }}
-            disabled={disabled}
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Radio value="safe" style={{ width: '100%' }}>
-                <div style={{ marginLeft: 8 }}>
-                  <Space>
-                    <Tag color={modeInfo.safe.color}>{modeInfo.safe.name}</Tag>
-                    <Text type="secondary">위험도: {modeInfo.safe.risk}</Text>
-                  </Space>
-                  <div style={{ marginTop: 4 }}>
-                    <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                      {modeInfo.safe.description}
-                    </Text>
+        {/* RSI 기반 자동 모드 표시 */}
+        {showRSIMode && rsiMode ? (
+          <RSIModeIndicator
+            mode={rsiMode.mode}
+            rsi={rsiMode.rsi}
+            prevRSI={rsiMode.prevRSI}
+            reason={rsiMode.reason}
+            signalStrength={rsiMode.signalStrength}
+            lastUpdateDate={rsiMode.lastUpdateDate}
+          />
+        ) : (
+          /* 수동 모드 선택 (RSI 데이터 없을 때만 표시) */
+          <div>
+            <Title level={5}>
+              투자 모드
+              <Tooltip title="RSI 데이터 로딩 중... 로딩 완료 후 자동으로 결정됩니다">
+                <InfoCircleOutlined style={{ marginLeft: 8, fontSize: 14, color: '#faad14' }} />
+              </Tooltip>
+            </Title>
+            <Radio.Group
+              value={config.mode}
+              onChange={(e) => onConfigChange({ mode: e.target.value })}
+              style={{ width: '100%' }}
+              disabled={disabled}
+            >
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Radio value="safe" style={{ width: '100%' }}>
+                  <div style={{ marginLeft: 8 }}>
+                    <Space>
+                      <Tag color={modeInfo.safe.color}>{modeInfo.safe.name}</Tag>
+                      <Text type="secondary">위험도: {modeInfo.safe.risk}</Text>
+                    </Space>
+                    <div style={{ marginTop: 4 }}>
+                      <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {modeInfo.safe.description}
+                      </Text>
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      <Text style={{ fontSize: '12px', color: '#52c41a' }}>
+                        예상수익: {modeInfo.safe.expectedReturn}
+                      </Text>
+                    </div>
                   </div>
-                  <div style={{ marginTop: 2 }}>
-                    <Text style={{ fontSize: '12px', color: '#52c41a' }}>
-                      예상수익: {modeInfo.safe.expectedReturn}
-                    </Text>
+                </Radio>
+
+                <Radio value="aggressive" style={{ width: '100%' }}>
+                  <div style={{ marginLeft: 8 }}>
+                    <Space>
+                      <Tag color={modeInfo.aggressive.color}>{modeInfo.aggressive.name}</Tag>
+                      <Text type="secondary">위험도: {modeInfo.aggressive.risk}</Text>
+                    </Space>
+                    <div style={{ marginTop: 4 }}>
+                      <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                        {modeInfo.aggressive.description}
+                      </Text>
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      <Text style={{ fontSize: '12px', color: '#f5222d' }}>
+                        예상수익: {modeInfo.aggressive.expectedReturn}
+                      </Text>
+                    </div>
                   </div>
-                </div>
-              </Radio>
-              
-              <Radio value="aggressive" style={{ width: '100%' }}>
-                <div style={{ marginLeft: 8 }}>
-                  <Space>
-                    <Tag color={modeInfo.aggressive.color}>{modeInfo.aggressive.name}</Tag>
-                    <Text type="secondary">위험도: {modeInfo.aggressive.risk}</Text>
-                  </Space>
-                  <div style={{ marginTop: 4 }}>
-                    <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                      {modeInfo.aggressive.description}
-                    </Text>
-                  </div>
-                  <div style={{ marginTop: 2 }}>
-                    <Text style={{ fontSize: '12px', color: '#f5222d' }}>
-                      예상수익: {modeInfo.aggressive.expectedReturn}
-                    </Text>
-                  </div>
-                </div>
-              </Radio>
-            </Space>
-          </Radio.Group>
-        </div>
+                </Radio>
+              </Space>
+            </Radio.Group>
+          </div>
+        )}
 
         {/* 현재 설정 요약 */}
         <div 
@@ -188,7 +222,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <Text>투자모드:</Text>
-              <Tag color={currentModeInfo.color}>{currentModeInfo.name}</Tag>
+              <Space>
+                <Tag color={currentModeInfo.color}>{currentModeInfo.name}</Tag>
+                {showRSIMode && rsiMode && (
+                  <Tag color="purple" style={{ fontSize: 10 }}>RSI 자동</Tag>
+                )}
+              </Space>
             </div>
           </Space>
         </div>

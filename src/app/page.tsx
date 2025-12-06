@@ -9,8 +9,10 @@ import {
   TableOutlined,
   RocketOutlined,
   InfoCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  BarChartOutlined
 } from '@ant-design/icons';
+import { useRouter } from 'next/navigation';
 import { ConfigPanel } from '@/components/ConfigPanel';
 import { TodaySignalPanel } from '@/components/TodaySignalPanel';
 import { DongpaTradeTable } from '@/components/DongpaTradeTable';
@@ -27,10 +29,12 @@ const { Title, Text } = Typography;
 const initialConfig = {
   initialCapital: 10000,
   divisions: 5, // 5분할 고정
-  mode: 'safe' as const
+  mode: 'safe' as const,
+  rebalancePeriod: 10 // 10일마다 재분할
 };
 
 export default function Home() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('today');
 
   // 더미 데이터 초기화
@@ -272,20 +276,34 @@ export default function Home() {
         <div className="flex justify-between items-center py-2 gap-4">
           {/* 좌측: 타이틀 */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Title 
-              level={3} 
+            <Title
+              level={3}
               className="!m-0 text-primary-500 text-base sm:text-lg lg:text-xl truncate"
             >
               🚀 동파법 SOXL
             </Title>
-            <Text 
-              type="secondary" 
+            <Text
+              type="secondary"
               className="hidden sm:inline text-xs sm:text-sm"
             >
               실시간 매매 신호 & 백테스팅
             </Text>
           </div>
-          
+
+          {/* 중앙: 백테스팅 버튼 */}
+          <Button
+            type="primary"
+            icon={<BarChartOutlined />}
+            onClick={() => router.push('/backtest')}
+            size="large"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none'
+            }}
+          >
+            백테스팅
+          </Button>
+
           {/* 우측: 오늘 종가 */}
           <div className="flex flex-col items-end min-w-fit">
             <div className="text-sm sm:text-base lg:text-lg font-bold whitespace-nowrap">
