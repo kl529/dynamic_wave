@@ -191,9 +191,13 @@ export interface DailyTradeRecord {
   divisionPortfolios: DivisionPortfolio[];
 
   // 당일 집계
-  totalBuyQuantity: number;
-  totalSellQuantity: number;
-  netQuantity: number;
+  totalBuyQuantity: number;      // 매수 총량
+  totalSellQuantity: number;     // 매도 총량
+  netQuantity: number;           // 순매매량 (매수 - 매도)
+  isNetted: boolean;             // 퉁치기 적용 여부
+  actualTradeQuantity: number;   // 실제 거래량 (퉁치기 후)
+  actualTradeType: 'BUY' | 'SELL' | 'NONE'; // 실제 거래 타입
+  savedCommission: number;       // 퉁치기로 절약한 수수료
   dailyRealizedPL: number;
 
   // 전체 자산

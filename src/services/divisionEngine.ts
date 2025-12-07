@@ -578,7 +578,33 @@ export class DivisionEngine {
     const totalAssets = totalCash + totalValue;
     const returnRate = ((totalAssets - this.config.initialCapital) / this.config.initialCapital) * 100;
 
+    // 🎯 퉁치기 계산
     const netQuantity = totalBuyQuantity - totalSellQuantity;
+    const isNetted = totalBuyQuantity > 0 && totalSellQuantity > 0; // 매수와 매도가 같은 날 발생
+
+    let actualTradeQuantity = 0;
+    let actualTradeType: 'BUY' | 'SELL' | 'NONE' = 'NONE';
+    let savedCommission = 0;
+
+    if (isNetted) {
+      // 퉁치기 적용: 순매매량만 거래
+      actualTradeQuantity = Math.abs(netQuantity);
+      actualTradeType = netQuantity > 0 ? 'BUY' : (netQuantity < 0 ? 'SELL' : 'NONE');
+
+      // 절약한 수수료 = 상쇄된 수량의 수수료 (양방향)
+      const nettedQuantity = Math.min(totalBuyQuantity, totalSellQuantity);
+      const nettedAmount = nettedQuantity * todayClose;
+      savedCommission = nettedAmount * getTotalFeeRate() * 2; // 매수+매도 수수료
+    } else {
+      // 퉁치기 없음: 그대로 거래
+      if (totalBuyQuantity > 0) {
+        actualTradeQuantity = totalBuyQuantity;
+        actualTradeType = 'BUY';
+      } else if (totalSellQuantity > 0) {
+        actualTradeQuantity = totalSellQuantity;
+        actualTradeType = 'SELL';
+      }
+    }
 
     return {
       date,
@@ -590,7 +616,11 @@ export class DivisionEngine {
       divisionPortfolios: divisions,
       totalBuyQuantity,
       totalSellQuantity,
-      netQuantity: Math.abs(netQuantity),
+      netQuantity,
+      isNetted,
+      actualTradeQuantity,
+      actualTradeType,
+      savedCommission,
       dailyRealizedPL,
       totalCash,
       totalHoldings,
