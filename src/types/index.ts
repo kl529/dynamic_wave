@@ -1,7 +1,7 @@
 export interface DongpaConfig {
   initialCapital: number;
   divisions: number;
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'auto';
   rebalancePeriod: number; // N일마다 재분할 (기본: 10일)
 }
 

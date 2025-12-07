@@ -16,7 +16,7 @@ interface DivisionPortfolio {
 interface DivisionStatusPanelProps {
   divisionPortfolios: DivisionPortfolio[];
   todayClose: number;
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'auto';
 }
 
 export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
@@ -75,7 +75,7 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
         const holdingDays = Math.floor(
           (Date.now() - new Date(record.buyDate).getTime()) / (1000 * 60 * 60 * 24)
         );
-        const maxDays = mode === 'safe' ? 30 : 7;
+        const maxDays = mode === 'aggressive' ? 7 : 30; // auto는 safe 기준으로
         const percentage = (holdingDays / maxDays) * 100;
         const color = percentage > 80 ? 'red' : percentage > 50 ? 'orange' : 'green';
 
