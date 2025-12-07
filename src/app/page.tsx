@@ -21,7 +21,7 @@ import { DivisionStatusPanel } from '@/components/DivisionStatusPanel';
 import { TradeRecordForm } from '@/components/TradeRecordForm';
 import { TradeRecordList } from '@/components/TradeRecordList';
 import { useDongpaEngine } from '@/hooks/useDongpaEngine';
-import { generateMockDivisions, getMockClosingPrices, initializeMockData } from '@/utils/mockData';
+import { calculateDivisionStates, getMockClosingPrices, initializeMockData } from '@/utils/mockData';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -36,14 +36,26 @@ const initialConfig = {
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('today');
+  const [realDivisions, setRealDivisions] = useState<any[]>([]);
 
-  // 더미 데이터 초기화
+  // localStorage 초기화 및 실제 분할 상태 로드
   React.useEffect(() => {
     initializeMockData();
+    loadDivisionStates();
+
+    // 매매 기록 변경 감지를 위한 이벤트 리스너
+    const handleStorageChange = () => {
+      loadDivisionStates();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // 더미 데이터
-  const mockDivisions = generateMockDivisions();
+  const loadDivisionStates = () => {
+    const divisions = calculateDivisionStates(initialConfig.initialCapital);
+    setRealDivisions(divisions);
+  };
+
   const mockPrices = getMockClosingPrices();
 
   const {
@@ -75,14 +87,14 @@ export default function Home() {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {/* 오늘 요일 & 분할 현황 */}
           <TodayOverview
-            divisionPortfolios={mockDivisions}
+            divisionPortfolios={realDivisions}
             yesterdayClose={mockPrices.yesterday}
             todayClose={mockPrices.today}
           />
 
           {/* 5분할 상태 대시보드 */}
           <DivisionStatusPanel
-            divisionPortfolios={mockDivisions}
+            divisionPortfolios={realDivisions}
             todayClose={mockPrices.today}
             mode={config.mode}
           />
@@ -125,7 +137,7 @@ export default function Home() {
                     </div>
                   </Col>
                 </>
-              ) : mockDivisions.some(d => d.status === 'HOLDING' && ((mockPrices.today - d.avgPrice) / d.avgPrice >= 0.002)) ? (
+              ) : realDivisions.some(d => d.status === 'HOLDING' && ((mockPrices.today - d.avgPrice) / d.avgPrice >= 0.002)) ? (
                 // 매도 조건 충족
                 <>
                   <Col xs={24} sm={12}>
@@ -190,7 +202,7 @@ export default function Home() {
       ),
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <TradeRecordForm onSave={() => window.location.reload()} />
+          <TradeRecordForm onSave={loadDivisionStates} />
           <TradeRecordList />
         </Space>
       )
