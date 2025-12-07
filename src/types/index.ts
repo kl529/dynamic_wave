@@ -113,8 +113,8 @@ export interface TodaySignal {
     매수가: number;          // LOC 체결가 (오늘 종가)
     매수금액: number;
     수수료: number;
-    하락률: number;          // 전일 대비 오늘 하락률 (%)
-    목표하락률: number;       // 매수 조건 하락률 (%)
+    상승률: number;          // 전일 대비 오늘 변동률 (%)
+    목표상승률: number;       // 매수 조건 목표 상승률 (%)
     메시지: string;
   };
   매도신호: {

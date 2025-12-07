@@ -40,8 +40,8 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
           매수가: 0,
           매수금액: 0,
           수수료: 0,
-          하락률: 0,
-          목표하락률: -3,
+          상승률: 0,
+          목표상승률: 3,
           메시지: '가격 정보 로딩 중...'
         },
         매도신호: {
