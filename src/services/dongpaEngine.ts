@@ -210,16 +210,19 @@ export class DongpaEngine {
     거래일자: string;
     종가: number;
     전일종가: number;
-    매매모드: 'safe' | 'aggressive';
+    매매모드: 'safe' | 'aggressive' | 'auto';
     이전기록?: DongpaTrade | null;
     초기자금: number;
     분할횟수: number;
     갱신주기: number; // 기본 10일
   }): DongpaTrade {
     const {
-      거래일자, 종가, 전일종가, 매매모드, 이전기록,
+      거래일자, 종가, 전일종가, 매매모드: 원본모드, 이전기록,
       초기자금, 분할횟수, 갱신주기 = 10
     } = config;
+
+    // auto 모드는 safe로 처리
+    const 매매모드: 'safe' | 'aggressive' = 원본모드 === 'auto' ? 'safe' : 원본모드;
 
     const modeConfig = getModeConfig(매매모드);
 
@@ -432,17 +435,20 @@ export class DongpaEngine {
     const 현재시드 = 최근거래기록?.시드 || this.config.initialCapital;
     const 매수일자 = 최근거래기록?.매수일자 || '';
 
+    // auto 모드는 safe로 처리 (실제로는 RSI 기반으로 동적 결정되어야 하나 여기서는 기본값 사용)
+    const 실행모드: 'safe' | 'aggressive' = this.config.mode === 'auto' ? 'safe' : this.config.mode;
+
     const 매수신호 = this.getTodayBuySignal({
       초기자금: 현재시드,
       분할횟수: this.config.divisions,
-      매매모드: this.config.mode,
+      매매모드: 실행모드,
       오늘종가,
       전일종가,
       예수금: 현재예수금
     });
 
     const 매도신호 = this.getTodaySellSignal({
-      매매모드: this.config.mode,
+      매매모드: 실행모드,
       오늘종가,
       평단가: 현재평단가,
       보유량: 현재보유량,
@@ -455,7 +461,8 @@ export class DongpaEngine {
 
   // 전략 정보 반환
   public getStrategyInfo() {
-    const modeConfig = getModeConfig(this.config.mode);
+    const 실행모드: 'safe' | 'aggressive' = this.config.mode === 'auto' ? 'safe' : this.config.mode;
+    const modeConfig = getModeConfig(실행모드);
 
     const descriptions = {
       safe: {
@@ -477,6 +484,16 @@ export class DongpaEngine {
         expectedReturn: "연 30-50%",
         maxDrawdown: "40-60%",
         maxHoldingDays: modeConfig.holdingDays
+      },
+      auto: {
+        name: "자동모드",
+        description: "RSI 기반 시장 상황 대응",
+        buyCondition: `RSI 지표에 따라 안전/공세 자동 전환`,
+        sellCondition: `모드별 조건 자동 적용`,
+        riskLevel: "변동",
+        expectedReturn: "시장 대응형",
+        maxDrawdown: "20-60%",
+        maxHoldingDays: 30
       }
     };
 

@@ -20,40 +20,74 @@ import { TodayOverview } from '@/components/TodayOverview';
 import { DivisionStatusPanel } from '@/components/DivisionStatusPanel';
 import { TradeRecordForm } from '@/components/TradeRecordForm';
 import { TradeRecordList } from '@/components/TradeRecordList';
+import { CurrentInvestmentStatus } from '@/components/CurrentInvestmentStatus';
 import { useDongpaEngine } from '@/hooks/useDongpaEngine';
 import { calculateDivisionStates, getMockClosingPrices, initializeMockData } from '@/utils/mockData';
+import { DongpaConfig } from '@/types';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 
-const initialConfig = {
-  initialCapital: 10000,
-  divisions: 5, // 5분할 고정
-  mode: 'safe' as const,
-  rebalancePeriod: 10 // 10일마다 재분할
+// localStorage에서 설정 로드
+const loadConfigFromStorage = (): DongpaConfig => {
+  if (typeof window === 'undefined') {
+    return {
+      initialCapital: 10000,
+      divisions: 5,
+      mode: 'auto',
+      rebalancePeriod: 10
+    };
+  }
+
+  const saved = localStorage.getItem('dongpaConfig');
+  if (saved) {
+    return JSON.parse(saved);
+  }
+
+  return {
+    initialCapital: 10000,
+    divisions: 5,
+    mode: 'auto',
+    rebalancePeriod: 10
+  };
 };
 
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('today');
   const [realDivisions, setRealDivisions] = useState<any[]>([]);
+  const [userConfig, setUserConfig] = useState<DongpaConfig>(loadConfigFromStorage());
 
   // localStorage 초기화 및 실제 분할 상태 로드
   React.useEffect(() => {
     initializeMockData();
-    loadDivisionStates();
+    const config = loadConfigFromStorage();
+    setUserConfig(config);
+    loadDivisionStates(config.initialCapital);
 
     // 매매 기록 변경 감지를 위한 이벤트 리스너
     const handleStorageChange = () => {
-      loadDivisionStates();
+      const config = loadConfigFromStorage();
+      loadDivisionStates(config.initialCapital);
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const loadDivisionStates = () => {
-    const divisions = calculateDivisionStates(initialConfig.initialCapital);
+  const loadDivisionStates = (capital?: number) => {
+    const divisions = calculateDivisionStates(capital || userConfig.initialCapital);
     setRealDivisions(divisions);
+  };
+
+  const handleConfigChange = (newConfig: Partial<DongpaConfig>) => {
+    const updated = { ...userConfig, ...newConfig };
+    setUserConfig(updated);
+    localStorage.setItem('dongpaConfig', JSON.stringify(updated));
+
+    // 초기자금 변경 시 분할 상태 재계산
+    if (newConfig.initialCapital) {
+      loadDivisionStates(newConfig.initialCapital);
+    }
   };
 
   const mockPrices = getMockClosingPrices();
@@ -61,18 +95,10 @@ export default function Home() {
   const {
     config,
     loading,
-    lastUpdate,
-    historicalData,
     tradeHistory,
-    latestTrade,
-    currentPrice,
-    changePercent,
     todaySignal,
-    strategyInfo,
-    loadHistoricalData,
-    refreshCurrentPrice,
-    updateRealtimeData
-  } = useDongpaEngine({ config: initialConfig });
+    refreshCurrentPrice
+  } = useDongpaEngine({ config: userConfig });
 
   const tabItems = [
     {
@@ -202,7 +228,17 @@ export default function Home() {
       ),
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <TradeRecordForm onSave={loadDivisionStates} />
+          {/* 현재 투자 상태 */}
+          <CurrentInvestmentStatus
+            divisions={realDivisions}
+            currentPrice={mockPrices.today}
+            initialCapital={userConfig.initialCapital}
+          />
+
+          {/* 매매 기록 입력 폼 */}
+          <TradeRecordForm onSave={() => loadDivisionStates()} />
+
+          {/* 매매 기록 목록 */}
           <TradeRecordList />
         </Space>
       )
@@ -218,12 +254,9 @@ export default function Home() {
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <ConfigPanel
-            config={config}
-            onConfigChange={(newConfig) => {
-              // 설정 변경 시 데이터 다시 로드
-              loadHistoricalData();
-            }}
-            divisionAmount={config.initialCapital / config.divisions}
+            config={userConfig}
+            onConfigChange={handleConfigChange}
+            divisionAmount={userConfig.initialCapital / userConfig.divisions}
           />
 
           {/* 거래 가이드 */}
