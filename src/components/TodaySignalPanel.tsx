@@ -166,20 +166,20 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="오늘 하락률"
-                    value={매수신호.하락률}
+                    title="오늘 변동률"
+                    value={매수신호.상승률}
                     suffix="%"
                     precision={2}
                     valueStyle={{
                       fontSize: '16px',
-                      color: 매수신호.하락률 <= 매수신호.목표하락률 ? '#52c41a' : '#8c8c8c'
+                      color: 매수신호.상승률 < 매수신호.목표상승률 ? '#52c41a' : '#8c8c8c'
                     }}
                   />
                 </Col>
                 <Col span={12}>
                   <Statistic
-                    title="목표 하락률"
-                    value={매수신호.목표하락률}
+                    title="목표 상승률"
+                    value={매수신호.목표상승률}
                     suffix="%"
                     precision={2}
                     valueStyle={{ fontSize: '16px' }}
