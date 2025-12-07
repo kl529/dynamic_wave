@@ -47,6 +47,15 @@ interface DebugTableRow {
   수익률: number;
   분할번호: number;
   isBuyAction: boolean;
+  // 퉁치기 정보
+  isFirstDivision: boolean;
+  퉁치기여부: boolean;
+  전체매수량: number;
+  전체매도량: number;
+  순매매량: number;
+  실제거래: 'BUY' | 'SELL' | 'NONE';
+  실제거래량: number;
+  절약수수료: number;
 }
 
 export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
@@ -62,7 +71,7 @@ export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
 
   trades.forEach((trade) => {
     // 각 분할별로 행 생성
-    trade.divisionPortfolios.forEach((division) => {
+    trade.divisionPortfolios.forEach((division, divIndex) => {
       // 해당 분할의 당일 액션 찾기
       const buyAction = trade.divisionActions.find(
         (a) => a.divisionNumber === division.divisionNumber && a.action === 'BUY'
@@ -164,7 +173,16 @@ export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
         총자산,
         수익률,
         분할번호: division.divisionNumber,
-        isBuyAction: Boolean(buyAction)
+        isBuyAction: Boolean(buyAction),
+        // 퉁치기 정보 (첫 번째 분할에만 표시)
+        isFirstDivision: divIndex === 0,
+        퉁치기여부: trade.isNetted,
+        전체매수량: trade.totalBuyQuantity,
+        전체매도량: trade.totalSellQuantity,
+        순매매량: trade.netQuantity,
+        실제거래: trade.actualTradeType,
+        실제거래량: trade.actualTradeQuantity,
+        절약수수료: trade.savedCommission
       });
     });
   });
@@ -383,6 +401,67 @@ export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
           {val.toFixed(2)}%
         </span>
       )
+    },
+    {
+      title: '퉁치기',
+      key: 'netting',
+      width: 90,
+      render: (_: any, row: DebugTableRow) => {
+        if (!row.isFirstDivision) return null;
+        return row.퉁치기여부 ? (
+          <Tag color="gold">✓ 퉁</Tag>
+        ) : (
+          <Tag color="default">-</Tag>
+        );
+      }
+    },
+    {
+      title: '매수/매도',
+      key: 'buysel',
+      width: 110,
+      render: (_: any, row: DebugTableRow) => {
+        if (!row.isFirstDivision) return null;
+        return (
+          <span style={{ fontSize: '12px' }}>
+            {row.전체매수량 > 0 && <span style={{ color: '#1890ff' }}>↑{row.전체매수량}</span>}
+            {row.전체매수량 > 0 && row.전체매도량 > 0 && ' / '}
+            {row.전체매도량 > 0 && <span style={{ color: '#ff4d4f' }}>↓{row.전체매도량}</span>}
+            {row.전체매수량 === 0 && row.전체매도량 === 0 && '-'}
+          </span>
+        );
+      }
+    },
+    {
+      title: '순매매',
+      key: 'net',
+      width: 110,
+      render: (_: any, row: DebugTableRow) => {
+        if (!row.isFirstDivision) return null;
+        if (row.실제거래 === 'NONE') return '-';
+        const color = row.실제거래 === 'BUY' ? '#1890ff' : '#ff4d4f';
+        const icon = row.실제거래 === 'BUY' ? '↑' : '↓';
+        return (
+          <span style={{ color, fontWeight: 'bold' }}>
+            {icon} {row.실제거래량}주
+          </span>
+        );
+      }
+    },
+    {
+      title: '절약수수료',
+      dataIndex: '절약수수료',
+      key: '절약수수료',
+      width: 110,
+      render: (val: number, row: DebugTableRow) => {
+        if (!row.isFirstDivision) return null;
+        return val > 0 ? (
+          <span style={{ color: '#52c41a' }}>
+            💰 ${val.toFixed(2)}
+          </span>
+        ) : (
+          '-'
+        );
+      }
     }
   ];
 
