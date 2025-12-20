@@ -83,10 +83,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </Title>
           <InputNumber
             value={config.initialCapital}
-            onChange={(value) => onConfigChange({ initialCapital: value || 10000 })}
-            min={10000}
+            onChange={(value) => onConfigChange({ initialCapital: value || 100 })}
+            min={100}
             max={1000000}
-            step={1000}
+            step={100}
             formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
             parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, ''))}
             style={{ width: '100%' }}
