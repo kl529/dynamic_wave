@@ -3,12 +3,9 @@
 import React, { useState } from 'react';
 import { Layout, Tabs, Typography, Space, Button, Alert, Spin, Card, Row, Col } from 'antd';
 import {
-  DashboardOutlined,
-  AreaChartOutlined,
   SettingOutlined,
   TableOutlined,
   RocketOutlined,
-  InfoCircleOutlined,
   FileTextOutlined,
   BarChartOutlined
 } from '@ant-design/icons';
@@ -22,7 +19,7 @@ import { TradeRecordForm } from '@/components/TradeRecordForm';
 import { TradeRecordList } from '@/components/TradeRecordList';
 import { CurrentInvestmentStatus } from '@/components/CurrentInvestmentStatus';
 import { useDongpaEngine } from '@/hooks/useDongpaEngine';
-import { calculateDivisionStates, getMockClosingPrices, initializeMockData } from '@/utils/mockData';
+import { calculateDivisionStates } from '@/utils/divisionStateCalculator';
 import { DongpaConfig } from '@/types';
 
 const { Header, Content } = Layout;
@@ -60,7 +57,6 @@ export default function Home() {
 
   // localStorage 초기화 및 실제 분할 상태 로드
   React.useEffect(() => {
-    initializeMockData();
     const config = loadConfigFromStorage();
     setUserConfig(config);
     loadDivisionStates(config.initialCapital);
@@ -90,15 +86,24 @@ export default function Home() {
     }
   };
 
-  const mockPrices = getMockClosingPrices();
-
   const {
     config,
     loading,
     tradeHistory,
     todaySignal,
+    currentPrice,
+    changePercent,
+    historicalData,
     refreshCurrentPrice
   } = useDongpaEngine({ config: userConfig });
+
+  // 어제 종가와 오늘 종가 계산
+  const yesterdayClose = historicalData.length > 1 
+    ? historicalData[historicalData.length - 2].price 
+    : currentPrice;
+  const todayClose = historicalData.length > 0 
+    ? historicalData[historicalData.length - 1].price 
+    : currentPrice;
 
   const tabItems = [
     {
@@ -114,22 +119,22 @@ export default function Home() {
           {/* 오늘 요일 & 분할 현황 */}
           <TodayOverview
             divisionPortfolios={realDivisions}
-            yesterdayClose={mockPrices.yesterday}
-            todayClose={mockPrices.today}
+            yesterdayClose={yesterdayClose}
+            todayClose={todayClose}
           />
 
           {/* 5분할 상태 대시보드 */}
           <DivisionStatusPanel
             divisionPortfolios={realDivisions}
-            todayClose={mockPrices.today}
+            todayClose={todayClose}
             mode={config.mode}
           />
 
           {/* 오늘 매매 신호 */}
           <TodaySignalPanel
             signal={todaySignal}
-            currentPrice={mockPrices.today}
-            changePercent={mockPrices.changePercent}
+            currentPrice={todayClose}
+            changePercent={changePercent}
             loading={loading}
             onRefresh={refreshCurrentPrice}
           />
@@ -141,10 +146,10 @@ export default function Home() {
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white'
             }}
-            headStyle={{ color: 'white', borderBottom: '1px solid rgba(255,255,255,0.2)' }}
+            styles={{ header: { color: 'white', borderBottom: '1px solid rgba(255,255,255,0.2)' } }}
           >
             <Row gutter={[24, 24]}>
-              {mockPrices.changePercent <= -3.0 ? (
+              {changePercent <= -3.0 ? (
                 // 매수 조건 충족
                 <>
                   <Col xs={24} sm={12}>
@@ -152,7 +157,7 @@ export default function Home() {
                       <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.9 }}>매수 신호</div>
                       <div style={{ fontSize: 32, fontWeight: 'bold' }}>🚀 70주</div>
                       <div style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
-                        @${mockPrices.today.toFixed(2)} = ${(70 * mockPrices.today).toFixed(0)}
+                        @${todayClose.toFixed(2)} = ${(70 * todayClose).toFixed(0)}
                       </div>
                     </div>
                   </Col>
@@ -163,7 +168,7 @@ export default function Home() {
                     </div>
                   </Col>
                 </>
-              ) : realDivisions.some(d => d.status === 'HOLDING' && ((mockPrices.today - d.avgPrice) / d.avgPrice >= 0.002)) ? (
+              ) : realDivisions.some(d => d.status === 'HOLDING' && ((todayClose - d.avgPrice) / d.avgPrice >= 0.002)) ? (
                 // 매도 조건 충족
                 <>
                   <Col xs={24} sm={12}>
@@ -177,7 +182,7 @@ export default function Home() {
                       <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.9 }}>매도 신호</div>
                       <div style={{ fontSize: 32, fontWeight: 'bold' }}>💰 68주</div>
                       <div style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
-                        @${mockPrices.today.toFixed(2)} = ${(68 * mockPrices.today).toFixed(0)}
+                        @${todayClose.toFixed(2)} = ${(68 * todayClose).toFixed(0)}
                       </div>
                       <div style={{ fontSize: 12, marginTop: 4, color: '#52c41a' }}>
                         예상수익: +$12.50
@@ -192,7 +197,7 @@ export default function Home() {
                     <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
                     <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 8 }}>관망</div>
                     <div style={{ fontSize: 14, opacity: 0.8 }}>
-                      매수: -{Math.abs(mockPrices.changePercent).toFixed(2)}% 하락 (3.0% 필요) |
+                      매수: -{Math.abs(changePercent).toFixed(2)}% 하락 (3.0% 필요) |
                       매도: 수익 목표가 미달성
                     </div>
                   </div>
@@ -231,7 +236,7 @@ export default function Home() {
           {/* 현재 투자 상태 */}
           <CurrentInvestmentStatus
             divisions={realDivisions}
-            currentPrice={mockPrices.today}
+            currentPrice={todayClose}
             initialCapital={userConfig.initialCapital}
           />
 
@@ -352,15 +357,15 @@ export default function Home() {
           {/* 우측: 오늘 종가 */}
           <div className="flex flex-col items-end min-w-fit">
             <div className="text-sm sm:text-base lg:text-lg font-bold whitespace-nowrap">
-              SOXL ${mockPrices.today.toFixed(2)}
+              SOXL ${todayClose.toFixed(2)}
             </div>
             <Text
               className="text-xs sm:text-sm font-medium whitespace-nowrap"
               style={{
-                color: mockPrices.changePercent >= 0 ? '#3f8600' : '#cf1322'
+                color: changePercent >= 0 ? '#3f8600' : '#cf1322'
               }}
             >
-              {mockPrices.changePercent >= 0 ? '+' : ''}{mockPrices.changePercent.toFixed(2)}%
+              {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
             </Text>
             <Text className="text-xs text-gray-400">
               오늘 종가
