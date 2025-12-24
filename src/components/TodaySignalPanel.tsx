@@ -28,6 +28,8 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
   loading = false,
   onRefresh
 }) => {
+  // 종가 매수법: signal은 종가 기준으로 하루에 한 번만 계산됨
+  // currentPrice는 실시간 참고용 (신호 계산에는 영향 없음)
   const { 매수신호, 매도신호 } = signal;
 
   // 신호 우선순위: 매도 > 매수 > 관망
@@ -291,6 +293,26 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
       {/* 추가 정보 */}
       <Card title="💡 거래 가이드" size="small">
         <Row gutter={[16, 8]}>
+          <Col xs={24}>
+            <Alert
+              message="⏰ 종가 매수법 (LOC 주문)"
+              description={
+                <div className="text-sm">
+                  <p className="mb-1">
+                    <strong>📌 핵심 원칙:</strong> 위 매수/매도 갯수는 <strong>오늘 종가 기준</strong>으로 계산되며, 
+                    장중 실시간 가격이 변해도 <strong>변하지 않습니다</strong>.
+                  </p>
+                  <p className="mb-0">
+                    💡 매일 종가가 확정된 후(미국 장 마감 후) 신호를 확인하고, 
+                    다음 날 LOC(Limit-On-Close) 주문으로 실행하세요.
+                  </p>
+                </div>
+              }
+              type="info"
+              showIcon
+              className="mb-3"
+            />
+          </Col>
           <Col xs={24} sm={12}>
             <div className="bg-blue-50 p-3 rounded">
               <h4 className="text-blue-600 font-semibold mb-2">📊 매수 조건</h4>
