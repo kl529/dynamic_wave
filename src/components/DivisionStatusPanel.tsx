@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react';
-import { Card, Table, Tag, Progress } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Progress, Tooltip } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, SafetyOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 interface DivisionPortfolio {
   cash: number;
@@ -61,6 +61,24 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
       width: 100
     },
     {
+      title: '매수 모드',
+      dataIndex: 'mode',
+      key: 'mode',
+      render: (mode: 'safe' | 'aggressive' | undefined, record: any) => {
+        if (record.status !== 'HOLDING') return '-';
+        const buyMode = mode || 'safe'; // 기본값
+        return (
+          <Tag 
+            icon={buyMode === 'safe' ? <SafetyOutlined /> : <ThunderboltOutlined />}
+            color={buyMode === 'safe' ? 'success' : 'error'}
+          >
+            {buyMode === 'safe' ? '안전' : '공세'}
+          </Tag>
+        );
+      },
+      width: 100
+    },
+    {
       title: '매수일',
       dataIndex: 'buyDate',
       key: 'buyDate',
@@ -75,24 +93,49 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
         const holdingDays = Math.floor(
           (Date.now() - new Date(record.buyDate).getTime()) / (1000 * 60 * 60 * 24)
         );
-        const maxDays = mode === 'aggressive' ? 7 : 30; // auto는 safe 기준으로
+        const buyMode = record.mode || 'safe';
+        const maxDays = buyMode === 'aggressive' ? 7 : 30;
         const percentage = (holdingDays / maxDays) * 100;
         const color = percentage > 80 ? 'red' : percentage > 50 ? 'orange' : 'green';
 
         return (
-          <div>
-            <div>{holdingDays}일</div>
-            <Progress
-              percent={Math.min(percentage, 100)}
-              size="small"
-              status={percentage > 80 ? 'exception' : 'active'}
-              strokeColor={color}
-              showInfo={false}
-            />
-          </div>
+          <Tooltip title={`최대 ${maxDays}일 (${buyMode === 'safe' ? '안전' : '공세'}모드)`}>
+            <div>
+              <div>{holdingDays}일 / {maxDays}일</div>
+              <Progress
+                percent={Math.min(percentage, 100)}
+                size="small"
+                status={percentage > 80 ? 'exception' : 'active'}
+                strokeColor={color}
+                showInfo={false}
+              />
+            </div>
+          </Tooltip>
         );
       },
       width: 120
+    },
+    {
+      title: '목표 수익률',
+      key: 'targetProfit',
+      render: (_: any, record: any) => {
+        if (record.status !== 'HOLDING') return '-';
+        const buyMode = record.mode || 'safe';
+        const targetRate = buyMode === 'safe' ? 0.2 : 2.5;
+        const currentRate = record.holdings > 0 
+          ? ((todayClose - record.avgPrice) / record.avgPrice) * 100 
+          : 0;
+        const achieved = currentRate >= targetRate;
+        
+        return (
+          <Tooltip title={`${buyMode === 'safe' ? '안전' : '공세'}모드 목표`}>
+            <Tag color={achieved ? 'green' : 'orange'}>
+              {achieved ? '✓ ' : ''}{targetRate}%
+            </Tag>
+          </Tooltip>
+        );
+      },
+      width: 110
     },
     {
       title: '현재 수익률',

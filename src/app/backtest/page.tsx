@@ -10,7 +10,7 @@ import { BacktestStatsDashboard } from '@/components/BacktestStatsDashboard';
 import { BacktestDebugTable } from '@/components/BacktestDebugTable';
 import { DivisionEngine } from '@/services/divisionEngine';
 import { MarketDataService } from '@/services/marketDataService';
-import { enrichDataWithRSI } from '@/utils/rsiCalculator';
+import { enrichDataWithWeeklyRSIMode } from '@/utils/rsiCalculator';
 import type { DailyTradeRecord, MarketData } from '@/types';
 
 const { Content } = Layout;
@@ -57,10 +57,10 @@ export default function BacktestPage() {
         throw new Error('선택한 기간의 SOXL 종가 데이터를 불러오지 못했습니다.');
       }
 
-      // RSI 기반 모드 계산
-      const rsiData = enrichDataWithRSI(marketData);
+      // 주간 RSI 기반 모드 계산
+      const dataWithMode = enrichDataWithWeeklyRSIMode(marketData);
       const modesByDate = new Map<string, 'safe' | 'aggressive'>();
-      rsiData.forEach(day => {
+      dataWithMode.forEach(day => {
         if (day.mode) {
           modesByDate.set(day.date, day.mode);
         }

@@ -65,65 +65,6 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* 현재가 및 주요 신호 */}
-      <Card size="small">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={8}>
-            <div className="text-center">
-              <div className="text-lg font-semibold mb-1">SOXL 현재가</div>
-              <div className="text-3xl font-bold font-mono">
-                ${currentPrice.toFixed(2)}
-              </div>
-              <Tag 
-                color={changePercent >= 0 ? 'green' : 'red'} 
-                className="text-lg font-bold mt-2"
-              >
-                {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
-              </Tag>
-            </div>
-          </Col>
-          
-          <Col xs={24} sm={16}>
-            <Alert
-              message={getSignalText()}
-              description={
-                <div className="space-y-2">
-                  <div className="text-lg font-semibold">
-                    {isPrimarySell ? 매도신호.메시지 : 매수신호.메시지}
-                  </div>
-                  {isPrimarySell && (
-                    <div className="text-sm">
-                      🎯 목표수익률: {매도신호.목표수익률.toFixed(2)}% |
-                      실현수익: ${매도신호.실현수익.toFixed(2)}
-                    </div>
-                  )}
-                  {isPrimaryBuy && (
-                    <div className="text-sm">
-                      💰 매수금액: ${매수신호.매수금액.toFixed(0)} | 
-                      수수료: ${매수신호.수수료.toFixed(2)}
-                    </div>
-                  )}
-                </div>
-              }
-              type={getAlertType()}
-              icon={getSignalIcon()}
-              showIcon
-              action={
-                onRefresh && (
-                  <Button 
-                    size="small" 
-                    onClick={onRefresh}
-                    loading={loading}
-                  >
-                    새로고침
-                  </Button>
-                )
-              }
-            />
-          </Col>
-        </Row>
-      </Card>
-
       {/* 상세 신호 정보 */}
       <Row gutter={[16, 16]}>
         {/* 매수 신호 카드 */}
