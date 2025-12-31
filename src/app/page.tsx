@@ -11,7 +11,6 @@ import {
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { ConfigPanel } from '@/components/ConfigPanel';
-import { TodaySignalPanel } from '@/components/TodaySignalPanel';
 import { DongpaTradeTable } from '@/components/DongpaTradeTable';
 import { TodayOverview } from '@/components/TodayOverview';
 import { DivisionStatusPanel } from '@/components/DivisionStatusPanel';
@@ -19,6 +18,7 @@ import { TradeRecordForm } from '@/components/TradeRecordForm';
 import { TradeRecordList } from '@/components/TradeRecordList';
 import { CurrentInvestmentStatus } from '@/components/CurrentInvestmentStatus';
 import { useDongpaEngine } from '@/hooks/useDongpaEngine';
+import { useRSIMode } from '@/hooks/useRSIMode';
 import { calculateDivisionStates } from '@/utils/divisionStateCalculator';
 import { DongpaConfig } from '@/types';
 
@@ -97,13 +97,25 @@ export default function Home() {
     refreshCurrentPrice
   } = useDongpaEngine({ config: userConfig });
 
+  // RSI 모드 계산 (auto 모드일 때만)
+  const rsiModeInfo = useRSIMode({
+    marketData: historicalData,
+    enabled: userConfig.mode === 'auto'
+  });
+
   // 어제 종가와 오늘 종가 계산
   const yesterdayClose = historicalData.length > 1 
     ? historicalData[historicalData.length - 2].price 
     : currentPrice;
+  const yesterdayDate = historicalData.length > 1
+    ? historicalData[historicalData.length - 2].date
+    : '';
   const todayClose = historicalData.length > 0 
     ? historicalData[historicalData.length - 1].price 
     : currentPrice;
+  const todayDate = historicalData.length > 0
+    ? historicalData[historicalData.length - 1].date
+    : '';
 
   const tabItems = [
     {
@@ -111,7 +123,7 @@ export default function Home() {
       label: (
         <Space>
           <RocketOutlined />
-          오늘 매매 신호
+          오늘 매매
         </Space>
       ),
       children: (
@@ -120,72 +132,138 @@ export default function Home() {
           <TodayOverview
             divisionPortfolios={realDivisions}
             yesterdayClose={yesterdayClose}
+            yesterdayDate={yesterdayDate}
             todayClose={todayClose}
-          />
-
-          {/* 5분할 상태 대시보드 */}
-          <DivisionStatusPanel
-            divisionPortfolios={realDivisions}
-            todayClose={todayClose}
-            mode={config.mode}
-          />
-
-          {/* 오늘 매매 신호 */}
-          <TodaySignalPanel
-            signal={todaySignal}
-            currentPrice={todayClose}
-            changePercent={changePercent}
-            loading={loading}
-            onRefresh={refreshCurrentPrice}
+            todayDate={todayDate}
+            initialCapital={userConfig.initialCapital}
+            mode={userConfig.mode}
+            rsiModeInfo={rsiModeInfo}
           />
 
           {/* 오늘 실행할 매매 요약 */}
           <Card
-            title="📋 오늘 실행할 매매"
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 20 }}>📋</span>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 'bold' }}>오늘 실행할 매매</div>
+                  <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 'normal' }}>
+                    {yesterdayDate} 종가 ${yesterdayClose.toFixed(2)} 기준
+                  </div>
+                </div>
+              </div>
+            }
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white'
+              color: 'white',
+              borderRadius: 12,
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
             }}
-            styles={{ header: { color: 'white', borderBottom: '1px solid rgba(255,255,255,0.2)' } }}
+            styles={{ 
+              header: { 
+                color: 'white', 
+                borderBottom: '1px solid rgba(255,255,255,0.2)',
+                padding: '16px 24px'
+              },
+              body: { padding: '24px' }
+            }}
           >
-            <Row gutter={[24, 24]}>
+            <Row gutter={[16, 16]}>
               {changePercent <= -3.0 ? (
                 // 매수 조건 충족
                 <>
-                  <Col xs={24} sm={12}>
-                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: 20, borderRadius: 8 }}>
-                      <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.9 }}>매수 신호</div>
-                      <div style={{ fontSize: 32, fontWeight: 'bold' }}>🚀 70주</div>
-                      <div style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
-                        @${todayClose.toFixed(2)} = ${(70 * todayClose).toFixed(0)}
+                  <Col xs={24} md={12}>
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(24, 144, 255, 0.15) 100%)',
+                      padding: 24, 
+                      borderRadius: 12,
+                      border: '2px solid rgba(24, 144, 255, 0.5)',
+                      boxShadow: '0 4px 12px rgba(24, 144, 255, 0.2)'
+                    }}>
+                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 24 }}>🚀</span>
+                        <span style={{ fontWeight: 'bold' }}>매수 신호 발생!</span>
+                      </div>
+                      <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>70주</div>
+                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
+                        예상 체결가: ${todayClose.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 12 }}>
+                        예상 투자금: ${(70 * todayClose).toFixed(0)}
+                      </div>
+                      <div style={{ 
+                        background: 'rgba(255,255,255,0.2)', 
+                        padding: '8px 12px', 
+                        borderRadius: 6,
+                        fontSize: 13,
+                        opacity: 0.9
+                      }}>
+                        💡 전일 대비 {Math.abs(changePercent).toFixed(2)}% 하락 (조건: -3.0% 이상)
                       </div>
                     </div>
                   </Col>
-                  <Col xs={24} sm={12}>
-                    <div style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 8 }}>
-                      <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.7 }}>매도</div>
-                      <div style={{ fontSize: 24, opacity: 0.7 }}>조건 미충족</div>
+                  <Col xs={24} md={12}>
+                    <div style={{ 
+                      background: 'rgba(255,255,255,0.08)', 
+                      padding: 24, 
+                      borderRadius: 12,
+                      border: '1px dashed rgba(255,255,255,0.3)'
+                    }}>
+                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매도</div>
+                      <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
+                      <div style={{ fontSize: 13, opacity: 0.6 }}>
+                        보유 중인 분할이 목표 수익률에<br />도달하면 매도 신호가 발생합니다
+                      </div>
                     </div>
                   </Col>
                 </>
               ) : realDivisions.some(d => d.status === 'HOLDING' && ((todayClose - d.avgPrice) / d.avgPrice >= 0.002)) ? (
                 // 매도 조건 충족
                 <>
-                  <Col xs={24} sm={12}>
-                    <div style={{ background: 'rgba(255,255,255,0.1)', padding: 20, borderRadius: 8 }}>
-                      <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.7 }}>매수</div>
-                      <div style={{ fontSize: 24, opacity: 0.7 }}>조건 미충족</div>
+                  <Col xs={24} md={12}>
+                    <div style={{ 
+                      background: 'rgba(255,255,255,0.08)', 
+                      padding: 24, 
+                      borderRadius: 12,
+                      border: '1px dashed rgba(255,255,255,0.3)'
+                    }}>
+                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매수</div>
+                      <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
+                      <div style={{ fontSize: 13, opacity: 0.6 }}>
+                        전일 대비 -3.0% 이상 하락 시<br />매수 신호가 발생합니다
+                      </div>
                     </div>
                   </Col>
-                  <Col xs={24} sm={12}>
-                    <div style={{ background: 'rgba(255,255,255,0.2)', padding: 20, borderRadius: 8 }}>
-                      <div style={{ fontSize: 16, marginBottom: 8, opacity: 0.9 }}>매도 신호</div>
-                      <div style={{ fontSize: 32, fontWeight: 'bold' }}>💰 68주</div>
-                      <div style={{ fontSize: 14, marginTop: 8, opacity: 0.9 }}>
-                        @${todayClose.toFixed(2)} = ${(68 * todayClose).toFixed(0)}
+                  <Col xs={24} md={12}>
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, rgba(82, 196, 26, 0.3) 0%, rgba(82, 196, 26, 0.15) 100%)',
+                      padding: 24, 
+                      borderRadius: 12,
+                      border: '2px solid rgba(82, 196, 26, 0.5)',
+                      boxShadow: '0 4px 12px rgba(82, 196, 26, 0.2)'
+                    }}>
+                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 24 }}>💰</span>
+                        <span style={{ fontWeight: 'bold' }}>매도 신호 발생!</span>
                       </div>
-                      <div style={{ fontSize: 12, marginTop: 4, color: '#52c41a' }}>
-                        예상수익: +$12.50
+                      <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>
+                        {realDivisions.filter(d => d.status === 'HOLDING' && ((todayClose - d.avgPrice) / d.avgPrice >= 0.002)).reduce((sum, d) => sum + d.holdings, 0)}주
+                      </div>
+                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
+                        예상 체결가: ${todayClose.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
+                        예상 매도금: ${(realDivisions.filter(d => d.status === 'HOLDING' && ((todayClose - d.avgPrice) / d.avgPrice >= 0.002)).reduce((sum, d) => sum + d.holdings, 0) * todayClose).toFixed(0)}
+                      </div>
+                      <div style={{ 
+                        background: 'rgba(255,255,255,0.2)', 
+                        padding: '8px 12px', 
+                        borderRadius: 6,
+                        fontSize: 13,
+                        opacity: 0.9,
+                        marginTop: 8
+                      }}>
+                        💡 목표 수익률 +0.2% 달성
                       </div>
                     </div>
                   </Col>
@@ -193,18 +271,36 @@ export default function Home() {
               ) : (
                 // 조건 미충족
                 <Col span={24}>
-                  <div style={{ textAlign: 'center', padding: 30 }}>
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-                    <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 8 }}>관망</div>
-                    <div style={{ fontSize: 14, opacity: 0.8 }}>
-                      매수: -{Math.abs(changePercent).toFixed(2)}% 하락 (3.0% 필요) |
-                      매도: 수익 목표가 미달성
+                  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
+                    <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>관망 (대기 중)</div>
+                    <div style={{ 
+                      fontSize: 15, 
+                      opacity: 0.85,
+                      background: 'rgba(255,255,255,0.1)',
+                      padding: '12px 24px',
+                      borderRadius: 8,
+                      display: 'inline-block'
+                    }}>
+                      <div style={{ marginBottom: 8 }}>
+                        📉 매수 조건: 전일 대비 <strong>-3.0%</strong> 필요 (현재: {changePercent.toFixed(2)}%)
+                      </div>
+                      <div>
+                        📈 매도 조건: 보유 분할의 수익률 <strong>+0.2%</strong> 필요
+                      </div>
                     </div>
                   </div>
                 </Col>
               )}
             </Row>
           </Card>
+
+          {/* 5분할 상태 대시보드 */}
+          <DivisionStatusPanel
+            divisionPortfolios={realDivisions}
+            todayClose={todayClose}
+            mode={config.mode}
+          />
         </Space>
       )
     },
@@ -354,23 +450,7 @@ export default function Home() {
             백테스팅
           </Button>
 
-          {/* 우측: 오늘 종가 */}
-          <div className="flex flex-col items-end min-w-fit">
-            <div className="text-sm sm:text-base lg:text-lg font-bold whitespace-nowrap">
-              SOXL ${todayClose.toFixed(2)}
-            </div>
-            <Text
-              className="text-xs sm:text-sm font-medium whitespace-nowrap"
-              style={{
-                color: changePercent >= 0 ? '#3f8600' : '#cf1322'
-              }}
-            >
-              {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
-            </Text>
-            <Text className="text-xs text-gray-400">
-              오늘 종가
-            </Text>
-          </div>
+
         </div>
       </Header>
 

@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { MarketData } from '@/types';
 import {
   enrichDataWithRSI,
-  getLatestRSIMode,
-  RSIData
+  getWeeklyRSIModeInfo,
+  RSIData,
+  getRSISignalStrength
 } from '@/utils/rsiCalculator';
 
 interface UseRSIModeProps {
@@ -27,6 +28,8 @@ interface RSIModeResult {
   loading: boolean;
   error: string | null;
   lastUpdateDate: string | null; // 마지막 데이터 날짜 (YYYY-MM-DD)
+  lastWeekDate: string | null; // 지난주 날짜
+  twoWeeksAgoDate: string | null; // 지지난주 날짜
 }
 
 /**
@@ -66,30 +69,42 @@ export function useRSIMode({
     }
   }, [marketData, enabled]);
 
-  // 최신 RSI 모드 가져오기
+  // 최신 주간 RSI 모드 가져오기
   const latestMode = useMemo(() => {
-    if (!enabled || rsiData.length === 0) {
+    if (!enabled || marketData.length === 0) {
       return {
         mode: 'safe' as const,
         reason: 'RSI 데이터 없음 - 기본 안전모드',
         rsi: null,
-        prevRSI: null
+        prevRSI: null,
+        lastWeekDate: null,
+        twoWeeksAgoDate: null
       };
     }
 
     try {
-      return getLatestRSIMode(marketData);
+      const weeklyInfo = getWeeklyRSIModeInfo(marketData);
+      return {
+        mode: weeklyInfo.mode,
+        reason: weeklyInfo.reason,
+        rsi: weeklyInfo.lastWeekRSI,
+        prevRSI: weeklyInfo.twoWeeksAgoRSI,
+        lastWeekDate: weeklyInfo.lastWeekDate,
+        twoWeeksAgoDate: weeklyInfo.twoWeeksAgoDate
+      };
     } catch (err) {
-      console.error('RSI 모드 결정 오류:', err);
-      setError('RSI 모드 결정 중 오류가 발생했습니다');
+      console.error('주간 RSI 모드 결정 오류:', err);
+      setError('주간 RSI 모드 결정 중 오류가 발생했습니다');
       return {
         mode: 'safe' as const,
         reason: '오류 발생 - 기본 안전모드',
         rsi: null,
-        prevRSI: null
+        prevRSI: null,
+        lastWeekDate: null,
+        twoWeeksAgoDate: null
       };
     }
-  }, [marketData, rsiData, enabled]);
+  }, [marketData, enabled]);
 
   // 시그널 강도 계산
   const signalStrength = useMemo(() => {
@@ -139,7 +154,9 @@ export function useRSIMode({
     rsiData,
     loading,
     error,
-    lastUpdateDate
+    lastUpdateDate,
+    lastWeekDate: latestMode.lastWeekDate,
+    twoWeeksAgoDate: latestMode.twoWeeksAgoDate
   };
 }
 
