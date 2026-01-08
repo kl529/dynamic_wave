@@ -1,3 +1,15 @@
+import { DEFAULT_CONFIG } from '@/constants';
+
+// 안전한 JSON 파싱
+const safeJsonParse = <T,>(json: string | null, fallback: T): T => {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
+};
+
 // 실제 거래 기록 기반으로 분할 상태 계산
 interface TradeRecord {
   id: number;
@@ -11,23 +23,27 @@ interface TradeRecord {
   createdAt: string;
 }
 
-export const calculateDivisionStates = (initialCapital: number = 10000) => {
+export const calculateDivisionStates = (
+  initialCapital: number = DEFAULT_CONFIG.initialCapital,
+  divisions: number = DEFAULT_CONFIG.divisions
+) => {
   if (typeof window === 'undefined') {
-    return Array(5).fill(null).map(() => ({
-      cash: initialCapital / 5,
+    return Array(divisions).fill(null).map(() => ({
+      cash: initialCapital / divisions,
       holdings: 0,
+      totalCost: 0,
       avgPrice: 0,
-      buyDate: null,
-      status: 'EMPTY' as const,
+      buyDate: null as string | null,
+      status: 'EMPTY' as 'EMPTY' | 'HOLDING',
       mode: 'safe' as const
     }));
   }
 
-  const records: TradeRecord[] = JSON.parse(localStorage.getItem('tradeRecords') || '[]');
-  const cashPerDivision = initialCapital / 5;
+  const records: TradeRecord[] = safeJsonParse(localStorage.getItem('tradeRecords'), []);
+  const cashPerDivision = initialCapital / divisions;
 
   // 각 분할별 상태 초기화
-  const divisions = Array(5).fill(null).map(() => ({
+  const divisionStates = Array(divisions).fill(null).map(() => ({
     cash: cashPerDivision,
     holdings: 0,
     totalCost: 0,
@@ -45,9 +61,9 @@ export const calculateDivisionStates = (initialCapital: number = 10000) => {
   // 각 거래를 처리
   sortedRecords.forEach(record => {
     const divIndex = record.division - 1;
-    if (divIndex < 0 || divIndex >= 5) return;
+    if (divIndex < 0 || divIndex >= divisions) return;
 
-    const div = divisions[divIndex];
+    const div = divisionStates[divIndex];
 
     if (record.action === 'BUY') {
       // 매수: 현금 차감, 보유량 증가, 평단가 계산
@@ -57,7 +73,7 @@ export const calculateDivisionStates = (initialCapital: number = 10000) => {
       div.cash -= record.amount;
       div.holdings = totalHoldings;
       div.totalCost = totalCost;
-      div.avgPrice = totalCost / totalHoldings;
+      div.avgPrice = totalHoldings > 0 ? totalCost / totalHoldings : 0;
       div.buyDate = record.date;
       div.status = 'HOLDING';
 
@@ -80,5 +96,5 @@ export const calculateDivisionStates = (initialCapital: number = 10000) => {
     }
   });
 
-  return divisions;
+  return divisionStates;
 };

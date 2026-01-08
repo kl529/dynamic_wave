@@ -1,5 +1,17 @@
 'use client'
 
+import { TIMING, NOTIFICATION } from '@/constants';
+
+// 안전한 JSON 파싱
+const safeJsonParse = <T,>(json: string | null, fallback: T): T => {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
+};
+
 export class NotificationManager {
   private static instance: NotificationManager;
   private swRegistration: ServiceWorkerRegistration | null = null;
@@ -85,8 +97,8 @@ export class NotificationManager {
     try {
       const notification = new Notification(title, {
         body: options.body || '',
-        icon: options.icon || '/icon-192x192.png',
-        badge: '/icon-72x72.png',
+        icon: options.icon || NOTIFICATION.ICON_192,
+        badge: NOTIFICATION.ICON_72,
         data: options.data || {},
         tag: options.tag || 'dongpa-notification',
         requireInteraction: options.requireInteraction || false
@@ -103,10 +115,10 @@ export class NotificationManager {
         }
       };
 
-      // 자동 닫기 (10초 후)
+      // 자동 닫기
       setTimeout(() => {
         notification.close();
-      }, 10000);
+      }, TIMING.NOTIFICATION_AUTO_CLOSE_MS);
 
       return true;
     } catch (error) {
@@ -239,7 +251,7 @@ export class NotificationManager {
       // 타임아웃 설정
       setTimeout(() => {
         reject(new Error('Service Worker 응답 시간 초과'));
-      }, 5000);
+      }, TIMING.PERMISSION_TIMEOUT_MS);
     });
   }
 
@@ -292,13 +304,7 @@ export class NotificationManager {
   // 알림 설정 로드
   public getNotificationSettings(): any {
     const saved = localStorage.getItem('dongpa-notification-settings');
-    
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    
-    // 기본 설정
-    return {
+    const defaultSettings = {
       enabled: true,
       buySignals: true,
       sellSignals: true,
@@ -310,6 +316,8 @@ export class NotificationManager {
         end: '08:00'
       }
     };
+    
+    return safeJsonParse(saved, defaultSettings);
   }
 
   // 조용한 시간 체크

@@ -4,6 +4,7 @@ import React from 'react';
 import { Card, Table, Tag, Space, Button } from 'antd';
 import { DownloadOutlined, TableOutlined } from '@ant-design/icons';
 import type { DailyTradeRecord } from '@/types';
+import { getModeConfig } from '@/utils/tradingConfig';
 
 interface BacktestDebugTableProps {
   trades: DailyTradeRecord[];
@@ -83,10 +84,7 @@ export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
       );
 
       // 모드별 설정
-      const modeConfig =
-        trade.mode === 'safe'
-          ? { sellTarget: 0.002, buyTarget: 0.03, holdingDays: 30 }
-          : { sellTarget: 0.025, buyTarget: 0.05, holdingDays: 7 };
+      const modeConfig = getModeConfig(trade.mode);
 
       // 가용자금 (현금)
       const 가용자금 = division.cash;

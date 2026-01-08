@@ -5,6 +5,17 @@ export interface DongpaConfig {
   rebalancePeriod: number; // N일마다 재분할 (기본: 10일)
 }
 
+// divisionStateCalculator에서 반환하는 분할 상태
+export interface DivisionState {
+  cash: number;
+  holdings: number;
+  totalCost: number;
+  avgPrice: number;
+  buyDate: string | null;
+  status: 'EMPTY' | 'HOLDING';
+  mode: 'safe' | 'aggressive';
+}
+
 // 분할별 포트폴리오 상태
 export interface DivisionPortfolio {
   divisionName: string;     // 분할 이름 (예: "분할1", "분할2")
@@ -28,11 +39,9 @@ export interface DivisionPortfolio {
   tradingDaysHeld: number;  // 거래일 기준 보유일수
 }
 
-export interface ModeConfig {
-  sellTarget: number;    // 매도 목표 수익률
-  buyTarget: number;     // 매수 목표 하락률
-  holdingDays: number;   // 최대 보유 거래일수 (주말 제외)
-}
+// ModeConfig는 @/utils/tradingConfig에서 정의됨
+// re-export를 위해 아래에서 import
+export type { ModeConfig } from '@/utils/tradingConfig';
 
 export interface MarketData {
   date: string;

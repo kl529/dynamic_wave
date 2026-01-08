@@ -8,6 +8,7 @@ import {
   DailyTradeRecord
 } from '@/types';
 import { getModeConfig, getTotalFeeRate, calculateTradingDays } from '@/utils/tradingConfig';
+import { TRADING } from '@/constants';
 
 type DivisionEngineMode = 'safe' | 'aggressive';
 type DivisionEngineConfig = Omit<DongpaConfig, 'mode'> & {
@@ -167,7 +168,9 @@ export class DivisionEngine {
         // HOLDING 상태
         const currentValue = div.holdings * currentPrice;
         const unrealizedPL = currentValue - div.totalCost;
-        const unrealizedPLRate = (unrealizedPL / div.totalCost) * 100;
+        const unrealizedPLRate = div.totalCost > 0 
+          ? (unrealizedPL / div.totalCost) * 100 
+          : 0;
 
         // 매도 지정가 계산
         const sellLimitPrice = div.avgPrice * (1 + modeConfig.sellTarget);
@@ -216,7 +219,7 @@ export class DivisionEngine {
     }
 
     // 충분한 현금이 없으면 매수 불가
-    if (division.cash < 100) {
+    if (division.cash < TRADING.MIN_CASH_FOR_TRADE) {
       return null;
     }
 
@@ -445,9 +448,9 @@ export class DivisionEngine {
         const netCommission = netAmount * getTotalFeeRate();
 
         // 순매도 시 수익 재계산 (일부만 매도)
-        const avgProfit = (sellSignal.profit || 0) / sellQty;
+        const avgProfit = sellQty > 0 ? (sellSignal.profit || 0) / sellQty : 0;
         const netProfit = avgProfit * netQty - netCommission;
-        const netProfitRate = sellSignal.profitRate
+        const netProfitRate = sellQty > 0 && sellSignal.profitRate
           ? (sellSignal.profitRate * netQty) / sellQty
           : 0;
 
