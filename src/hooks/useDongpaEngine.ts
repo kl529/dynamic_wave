@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DongpaConfig, MarketData, TodaySignal } from '@/types';
 import { DongpaEngine } from '@/services/dongpaEngine';
 import { MarketDataService } from '@/services/marketDataService';
+import { TIMING, TRADING } from '@/constants';
 
 interface UseDongpaEngineProps {
   config: DongpaConfig;
@@ -42,7 +43,7 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
           매수금액: 0,
           수수료: 0,
           상승률: 0,
-          목표상승률: 3,
+          목표상승률: Math.abs(TRADING.SAFE.BUY_TARGET * 100),
           메시지: '가격 정보 로딩 중...'
         },
         매도신호: {
@@ -53,7 +54,7 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
           수수료: 0,
           실현수익: 0,
           수익률: 0,
-          목표수익률: 0.2,
+          목표수익률: TRADING.SAFE.SELL_TARGET * 100,
           거래일보유기간: 0,
           메시지: '보유 종목 없음',
           손절여부: false
@@ -91,7 +92,7 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
   }, []);
 
   // 과거 데이터 로드
-  const loadHistoricalData = useCallback(async (days: number = 90) => {
+  const loadHistoricalData = useCallback(async (days: number = TIMING.DEFAULT_HISTORICAL_DAYS) => {
     setLoading(true);
     
     try {
@@ -161,7 +162,7 @@ export const useDongpaEngine = ({ config }: UseDongpaEngineProps) => {
     };
 
     checkAndRefresh();
-    const interval = setInterval(checkAndRefresh, 60000);
+    const interval = setInterval(checkAndRefresh, TIMING.MARKET_CHECK_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [shouldRefreshData, loadHistoricalData]);

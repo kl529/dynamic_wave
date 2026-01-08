@@ -2,6 +2,32 @@
 
 import { MarketData, RealtimeQuote } from '@/types';
 
+// Yahoo Finance API 응답 타입 정의
+interface YahooFinanceResponse {
+  chart: {
+    result: Array<{
+      meta: {
+        regularMarketPrice: number;
+        previousClose: number;
+        regularMarketVolume?: number;
+        regularMarketTime: number;
+        regularMarketDayHigh?: number;
+        regularMarketDayLow?: number;
+      };
+      timestamp?: number[];
+      indicators?: {
+        quote?: Array<{
+          open?: number[];
+          high?: number[];
+          low?: number[];
+          close?: number[];
+          volume?: number[];
+        }>;
+      };
+    }>;
+  };
+}
+
 export class MarketDataService {
   // Yahoo Finance API를 통해 실시간 SOXL 데이터 가져오기
   static async getCurrentSOXLData(): Promise<RealtimeQuote> {
@@ -37,7 +63,7 @@ export class MarketDataService {
     }
   }
 
-  private static parseYahooData(data: any): RealtimeQuote {
+  private static parseYahooData(data: YahooFinanceResponse): RealtimeQuote {
     const result = data.chart?.result?.[0];
     const meta = result?.meta;
     const quote = result?.indicators?.quote?.[0];
@@ -63,7 +89,7 @@ export class MarketDataService {
     };
   }
 
-  private static parseYahooHistorical(data: any): MarketData[] {
+  private static parseYahooHistorical(data: YahooFinanceResponse): MarketData[] {
     const result = data.chart?.result?.[0];
     
     if (!result) {

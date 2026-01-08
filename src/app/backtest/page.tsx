@@ -11,6 +11,7 @@ import { BacktestDebugTable } from '@/components/BacktestDebugTable';
 import { DivisionEngine } from '@/services/divisionEngine';
 import { MarketDataService } from '@/services/marketDataService';
 import { enrichDataWithWeeklyRSIMode } from '@/utils/rsiCalculator';
+import { DEFAULT_CONFIG, TIMING, BACKTEST } from '@/constants';
 import type { DailyTradeRecord, MarketData } from '@/types';
 
 const { Content } = Layout;
@@ -19,12 +20,12 @@ export default function BacktestPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState<BacktestConfig>({
-    initialCapital: 10000,
-    divisions: 5,
-    mode: 'auto',
-    rebalancePeriod: 10,
-    startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 90일 전
-    endDate: new Date().toISOString().split('T')[0] // 오늘
+    initialCapital: DEFAULT_CONFIG.initialCapital,
+    divisions: DEFAULT_CONFIG.divisions,
+    mode: DEFAULT_CONFIG.mode,
+    rebalancePeriod: DEFAULT_CONFIG.rebalancePeriod,
+    startDate: new Date(Date.now() - TIMING.DAYS_90_MS).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
   });
   const [backtestResults, setBacktestResults] = useState<DailyTradeRecord[]>([]);
   const [hasRunBacktest, setHasRunBacktest] = useState(false);
@@ -244,10 +245,9 @@ async function fetchHistoricalMarketData(
   const now = new Date();
   const MILLIS_PER_DAY = 1000 * 60 * 60 * 24;
   const daysFromStartToNow = Math.ceil((now.getTime() - start.getTime()) / MILLIS_PER_DAY);
-  const buffer = 30; // 주말/휴장일 충분히 보정 (약 4주)
 
   // startDate 기준으로 충분한 데이터 가져오기
-  const totalDays = Math.max(daysFromStartToNow + buffer, 365); // 최소 1년치 데이터 확보
+  const totalDays = Math.max(daysFromStartToNow + BACKTEST.BUFFER_DAYS, BACKTEST.MIN_DAYS);
   const rawData = await MarketDataService.getHistoricalSOXLData(totalDays);
 
   const startKey = start.toISOString().split('T')[0];

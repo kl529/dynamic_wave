@@ -54,23 +54,24 @@ export function useRSIMode({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // RSI 데이터 계산 (메모이제이션)
-  const rsiData = useMemo(() => {
+  // RSI 데이터 계산 결과 및 오류 상태
+  const rsiResult = useMemo(() => {
     if (!enabled || !marketData || marketData.length === 0) {
-      return [];
+      return { data: [], error: null };
     }
 
     try {
-      return enrichDataWithRSI(marketData);
+      return { data: enrichDataWithRSI(marketData), error: null };
     } catch (err) {
       console.error('RSI 계산 오류:', err);
-      setError('RSI 계산 중 오류가 발생했습니다');
-      return [];
+      return { data: [], error: 'RSI 계산 중 오류가 발생했습니다' };
     }
   }, [marketData, enabled]);
 
+  const rsiData = rsiResult.data;
+
   // 최신 주간 RSI 모드 가져오기
-  const latestMode = useMemo(() => {
+  const latestModeResult = useMemo(() => {
     if (!enabled || marketData.length === 0) {
       return {
         mode: 'safe' as const,
@@ -78,7 +79,8 @@ export function useRSIMode({
         rsi: null,
         prevRSI: null,
         lastWeekDate: null,
-        twoWeeksAgoDate: null
+        twoWeeksAgoDate: null,
+        error: null
       };
     }
 
@@ -90,21 +92,24 @@ export function useRSIMode({
         rsi: weeklyInfo.lastWeekRSI,
         prevRSI: weeklyInfo.twoWeeksAgoRSI,
         lastWeekDate: weeklyInfo.lastWeekDate,
-        twoWeeksAgoDate: weeklyInfo.twoWeeksAgoDate
+        twoWeeksAgoDate: weeklyInfo.twoWeeksAgoDate,
+        error: null
       };
     } catch (err) {
       console.error('주간 RSI 모드 결정 오류:', err);
-      setError('주간 RSI 모드 결정 중 오류가 발생했습니다');
       return {
         mode: 'safe' as const,
         reason: '오류 발생 - 기본 안전모드',
         rsi: null,
         prevRSI: null,
         lastWeekDate: null,
-        twoWeeksAgoDate: null
+        twoWeeksAgoDate: null,
+        error: '주간 RSI 모드 결정 중 오류가 발생했습니다'
       };
     }
   }, [marketData, enabled]);
+
+  const latestMode = latestModeResult;
 
   // 시그널 강도 계산
   const signalStrength = useMemo(() => {
@@ -120,22 +125,26 @@ export function useRSIMode({
     return latest.signalStrength;
   }, [rsiData]);
 
-  // 로딩 상태 관리
+  // 로딩 및 에러 상태 관리
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
+      setError(null);
       return;
     }
 
     if (marketData && marketData.length > 0) {
       // 데이터가 있으면 로딩 완료
       setLoading(false);
-      setError(null);
+      // useMemo에서 발생한 에러 동기화
+      const combinedError = rsiResult.error || latestModeResult.error;
+      setError(combinedError);
     } else {
       // 데이터가 없으면 로딩 중
       setLoading(true);
+      setError(null);
     }
-  }, [marketData, enabled]);
+  }, [marketData, enabled, rsiResult.error, latestModeResult.error]);
 
   // 마지막 업데이트 날짜 가져오기
   const lastUpdateDate = useMemo(() => {
@@ -170,18 +179,26 @@ export function useRSIHistory(marketData: MarketData[]): {
 } {
   const [loading, setLoading] = useState(true);
 
+  // useMemo는 순수 계산만 수행
   const rsiHistory = useMemo(() => {
     if (!marketData || marketData.length === 0) {
       return [];
     }
 
     try {
-      setLoading(false);
       return enrichDataWithRSI(marketData);
     } catch (err) {
       console.error('RSI 히스토리 계산 오류:', err);
-      setLoading(false);
       return [];
+    }
+  }, [marketData]);
+
+  // 부작용(상태 변경)은 useEffect에서 처리
+  useEffect(() => {
+    if (marketData && marketData.length > 0) {
+      setLoading(false);
+    } else {
+      setLoading(true);
     }
   }, [marketData]);
 

@@ -3,12 +3,9 @@
 import React from 'react';
 import { Card, Row, Col, Tag, Alert, Statistic, Space, Button, Tooltip } from 'antd';
 import { 
-  ArrowUpOutlined, 
-  ArrowDownOutlined, 
   DollarOutlined,
   ShoppingCartOutlined,
   BankOutlined,
-  LineChartOutlined,
   InfoCircleOutlined
 } from '@ant-design/icons';
 import { TodaySignal } from '@/types';
@@ -31,37 +28,6 @@ export const TodaySignalPanel: React.FC<TodaySignalPanelProps> = ({
   // 종가 매수법: signal은 종가 기준으로 하루에 한 번만 계산됨
   // currentPrice는 실시간 참고용 (신호 계산에는 영향 없음)
   const { 매수신호, 매도신호 } = signal;
-
-  // 신호 우선순위: 매도 > 매수 > 관망
-  const primarySignal = 매도신호.신호 === 'SELL' ? 매도신호 : 매수신호;
-  const isPrimarySell = 매도신호.신호 === 'SELL';
-  const isPrimaryBuy = 매수신호.신호 === 'BUY' && 매도신호.신호 !== 'SELL';
-  const isHold = !isPrimarySell && !isPrimaryBuy;
-
-  // 신호 색상 및 아이콘
-  const getSignalColor = () => {
-    if (isPrimarySell) return '#f5222d'; // 빨강
-    if (isPrimaryBuy) return '#1890ff';  // 파랑
-    return '#8c8c8c'; // 회색
-  };
-
-  const getSignalIcon = () => {
-    if (isPrimarySell) return <ArrowDownOutlined />;
-    if (isPrimaryBuy) return <ArrowUpOutlined />;
-    return <LineChartOutlined />;
-  };
-
-  const getSignalText = () => {
-    if (isPrimarySell) return '🔥 매도 신호';
-    if (isPrimaryBuy) return '🚀 매수 신호';
-    return '⏳ 관망';
-  };
-
-  const getAlertType = (): "success" | "info" | "warning" | "error" => {
-    if (isPrimarySell) return 'error';   // 매도는 빨강
-    if (isPrimaryBuy) return 'info';     // 매수는 파랑
-    return 'warning'; // 관망은 노랑
-  };
 
   return (
     <div className="space-y-4">
