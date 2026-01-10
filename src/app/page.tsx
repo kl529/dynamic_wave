@@ -51,6 +51,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('today');
   const [realDivisions, setRealDivisions] = useState<DivisionState[]>([]);
   const [userConfig, setUserConfig] = useState<DongpaConfig>(loadConfigFromStorage());
+  const [tradeRecordRefresh, setTradeRecordRefresh] = useState(0);
 
   // localStorage 초기화 및 실제 분할 상태 로드
   React.useEffect(() => {
@@ -343,10 +344,13 @@ export default function Home() {
           />
 
           {/* 매매 기록 입력 폼 */}
-          <TradeRecordForm onSave={() => loadDivisionStates()} />
+          <TradeRecordForm onSave={() => {
+            loadDivisionStates();
+            setTradeRecordRefresh(prev => prev + 1);
+          }} />
 
           {/* 매매 기록 목록 */}
-          <TradeRecordList />
+          <TradeRecordList refreshTrigger={tradeRecordRefresh} />
         </Space>
       )
     },
