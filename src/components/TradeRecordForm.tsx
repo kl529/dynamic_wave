@@ -4,37 +4,32 @@ import React, { useState } from 'react';
 import { Card, Form, Select, InputNumber, DatePicker, Input, Button, message, Space, Row, Col } from 'antd';
 import { PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { TradeRecordService } from '@/services/supabaseService';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-export const TradeRecordForm: React.FC<{ onSave?: (record: any) => void }> = ({ onSave }) => {
+export const TradeRecordForm: React.FC<{ onSave?: () => void }> = ({ onSave }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (values: any) => {
     setLoading(true);
     try {
-      const record = {
-        id: Date.now(),
-        date: values.date.format('YYYY-MM-DD'),
-        division: values.division,
-        action: values.action,
+      await TradeRecordService.addRecord({
+        user_id: 'default_user',
+        trade_date: values.date.format('YYYY-MM-DD'),
+        division_number: values.division,
+        trade_type: values.action,
         quantity: values.quantity,
         price: values.price,
         amount: values.quantity * values.price,
-        comment: values.comment || '',
-        createdAt: new Date().toISOString()
-      };
-
-      // localStorage에 저장
-      const existingRecords = JSON.parse(localStorage.getItem('tradeRecords') || '[]');
-      existingRecords.push(record);
-      localStorage.setItem('tradeRecords', JSON.stringify(existingRecords));
+        comment: values.comment || null
+      });
 
       message.success('매매 기록이 저장되었습니다!');
       form.resetFields();
-      onSave && onSave(record);
+      onSave && onSave();
     } catch (error) {
       message.error('저장 실패: ' + (error as Error).message);
     } finally {
