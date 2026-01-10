@@ -19,8 +19,9 @@ import { TradeRecordList } from '@/components/TradeRecordList';
 import { CurrentInvestmentStatus } from '@/components/CurrentInvestmentStatus';
 import { useDongpaEngine } from '@/hooks/useDongpaEngine';
 import { useRSIMode } from '@/hooks/useRSIMode';
-import { calculateDivisionStates } from '@/utils/divisionStateCalculator';
-import { DongpaConfig, DivisionState } from '@/types';
+import { calculateDivisionStatesFromRecords, createInitialDivisionStates, DivisionState } from '@/utils/divisionStateCalculator';
+import { TradeRecordService } from '@/services/supabaseService';
+import { DongpaConfig } from '@/types';
 import { DEFAULT_CONFIG, TRADING, UI } from '@/constants';
 
 const { Header, Content } = Layout;
@@ -52,26 +53,35 @@ export default function Home() {
   const [realDivisions, setRealDivisions] = useState<DivisionState[]>([]);
   const [userConfig, setUserConfig] = useState<DongpaConfig>(loadConfigFromStorage());
   const [tradeRecordRefresh, setTradeRecordRefresh] = useState(0);
+  const [divisionsLoading, setDivisionsLoading] = useState(true);
 
-  // localStorage 초기화 및 실제 분할 상태 로드
+  // Supabase에서 매매기록을 로드하여 분할 상태 계산
+  const loadDivisionStates = React.useCallback(async (capital?: number) => {
+    const targetCapital = capital || userConfig.initialCapital;
+
+    try {
+      if (TradeRecordService.isConfigured()) {
+        const records = await TradeRecordService.getRecords();
+        const divisions = calculateDivisionStatesFromRecords(records, targetCapital);
+        setRealDivisions(divisions);
+      } else {
+        // Supabase 미설정시 초기 상태
+        setRealDivisions(createInitialDivisionStates(targetCapital));
+      }
+    } catch (error) {
+      console.error('Failed to load division states:', error);
+      setRealDivisions(createInitialDivisionStates(targetCapital));
+    } finally {
+      setDivisionsLoading(false);
+    }
+  }, [userConfig.initialCapital]);
+
+  // 초기 로드
   React.useEffect(() => {
     const config = loadConfigFromStorage();
     setUserConfig(config);
     loadDivisionStates(config.initialCapital);
-
-    // 매매 기록 변경 감지를 위한 이벤트 리스너
-    const handleStorageChange = () => {
-      const config = loadConfigFromStorage();
-      loadDivisionStates(config.initialCapital);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const loadDivisionStates = (capital?: number) => {
-    const divisions = calculateDivisionStates(capital || userConfig.initialCapital);
-    setRealDivisions(divisions);
-  };
+  }, [loadDivisionStates]);
 
   const handleConfigChange = (newConfig: Partial<DongpaConfig>) => {
     const updated = { ...userConfig, ...newConfig };
