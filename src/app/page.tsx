@@ -125,10 +125,21 @@ export default function Home() {
     ? historicalData[historicalData.length - 2].date
     : '';
 
+  // 실제 적용 모드 결정 (auto이면 RSI 기반)
+  const effectiveMode = userConfig.mode === 'auto' && rsiModeInfo ? rsiModeInfo.mode : (userConfig.mode as 'safe' | 'aggressive' | 'bull' | 'cash');
+
+  // 모드별 임계값 (v3.1 기준)
+  const effectiveThresholds = {
+    safe:       { buy: TRADING.SAFE.BUY_TARGET,       sell: TRADING.SAFE.SELL_TARGET,       holdDays: TRADING.SAFE.HOLDING_DAYS },
+    aggressive: { buy: TRADING.AGGRESSIVE.BUY_TARGET, sell: TRADING.AGGRESSIVE.SELL_TARGET, holdDays: TRADING.AGGRESSIVE.HOLDING_DAYS },
+    bull:       { buy: TRADING.BULL.BUY_TARGET,       sell: TRADING.BULL.SELL_TARGET,       holdDays: TRADING.BULL.HOLDING_DAYS },
+    cash:       { buy: 0,                              sell: 0,                              holdDays: 0 },
+  }[effectiveMode];
+
   // 다음 매수할 분할 찾기 (EMPTY 상태인 첫 번째 분할)
   const nextBuyDivision = realDivisions.find(d => d.status === 'EMPTY');
   const availableCash = nextBuyDivision?.cash || (userConfig.initialCapital / userConfig.divisions);
-  
+
   // 실제 매수 가능 수량 계산 (LOC 체결가 = 오늘 종가 예상)
   const estimatedBuyPrice = todayClose;
   const estimatedBuyQuantity = estimatedBuyPrice > 0 ? Math.floor(availableCash / estimatedBuyPrice) : 0;
@@ -186,13 +197,24 @@ export default function Home() {
             }}
           >
             <Row gutter={[16, 16]}>
-              {changePercent <= TRADING.SAFE.BUY_TARGET * 100 ? (
+              {effectiveMode === 'cash' ? (
+                // 현금 보유 모드 — 매매 없음
+                <Col span={24}>
+                  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <div style={{ fontSize: 56, marginBottom: 16 }}>🛡️</div>
+                    <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>현금 보유 중</div>
+                    <div style={{ fontSize: 15, opacity: 0.85, background: 'rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: 8, display: 'inline-block' }}>
+                      RSI 하락장 감지 — 신규 매수 중단, 기존 분할 청산 후 대기
+                    </div>
+                  </div>
+                </Col>
+              ) : changePercent <= effectiveThresholds.buy * 100 && nextBuyDivision ? (
                 // 매수 조건 충족
                 <>
                   <Col xs={24} md={12}>
-                    <div style={{ 
+                    <div style={{
                       background: UI.COLORS.BUY_SIGNAL_BG,
-                      padding: 24, 
+                      padding: 24,
                       borderRadius: 12,
                       border: `2px solid ${UI.COLORS.BUY_SIGNAL_BORDER}`,
                       boxShadow: '0 4px 12px rgba(24, 144, 255, 0.2)'
@@ -208,24 +230,13 @@ export default function Home() {
                       <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 12 }}>
                         예상 투자금: ${estimatedBuyAmount.toFixed(0)}
                       </div>
-                      <div style={{ 
-                        background: 'rgba(255,255,255,0.2)', 
-                        padding: '8px 12px', 
-                        borderRadius: 6,
-                        fontSize: 13,
-                        opacity: 0.9
-                      }}>
-                        💡 전일 대비 {Math.abs(changePercent).toFixed(2)}% 하락 (조건: {(TRADING.SAFE.BUY_TARGET * 100).toFixed(1)}% 이상)
+                      <div style={{ background: 'rgba(255,255,255,0.2)', padding: '8px 12px', borderRadius: 6, fontSize: 13, opacity: 0.9 }}>
+                        💡 전일 대비 {Math.abs(changePercent).toFixed(2)}% 하락 (조건: {Math.abs(effectiveThresholds.buy * 100).toFixed(1)}% 이상)
                       </div>
                     </div>
                   </Col>
                   <Col xs={24} md={12}>
-                    <div style={{ 
-                      background: UI.COLORS.CARD_BG, 
-                      padding: 24, 
-                      borderRadius: 12,
-                      border: UI.COLORS.CARD_BORDER
-                    }}>
+                    <div style={{ background: UI.COLORS.CARD_BG, padding: 24, borderRadius: 12, border: UI.COLORS.CARD_BORDER }}>
                       <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매도</div>
                       <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
                       <div style={{ fontSize: 13, opacity: 0.6 }}>
@@ -234,54 +245,44 @@ export default function Home() {
                     </div>
                   </Col>
                 </>
-              ) : realDivisions.some(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= TRADING.SAFE.SELL_TARGET)) ? (
+              ) : realDivisions.some(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= effectiveThresholds.sell)) ? (
                 // 매도 조건 충족
                 <>
                   <Col xs={24} md={12}>
-                    <div style={{ 
-                      background: UI.COLORS.CARD_BG, 
-                      padding: 24, 
-                      borderRadius: 12,
-                      border: UI.COLORS.CARD_BORDER
-                    }}>
+                    <div style={{ background: UI.COLORS.CARD_BG, padding: 24, borderRadius: 12, border: UI.COLORS.CARD_BORDER }}>
                       <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매수</div>
                       <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
                       <div style={{ fontSize: 13, opacity: 0.6 }}>
-                        전일 대비 {(TRADING.SAFE.BUY_TARGET * 100).toFixed(1)}% 이상 하락 시<br />매수 신호가 발생합니다
+                        전일 대비 {Math.abs(effectiveThresholds.buy * 100).toFixed(1)}% 이상 하락 시<br />매수 신호가 발생합니다
                       </div>
                     </div>
                   </Col>
                   <Col xs={24} md={12}>
-                    <div style={{ 
+                    <div style={{
                       background: UI.COLORS.SELL_SIGNAL_BG,
-                      padding: 24, 
+                      padding: 24,
                       borderRadius: 12,
                       border: `2px solid ${UI.COLORS.SELL_SIGNAL_BORDER}`,
                       boxShadow: '0 4px 12px rgba(82, 196, 26, 0.2)'
                     }}>
-                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 24 }}>💰</span>
-                        <span style={{ fontWeight: 'bold' }}>매도 신호 발생!</span>
-                      </div>
-                      <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>
-                        {realDivisions.filter(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= TRADING.SAFE.SELL_TARGET)).reduce((sum, d) => sum + d.holdings, 0)}주
-                      </div>
-                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
-                        예상 체결가: ${todayClose.toFixed(2)}
-                      </div>
-                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
-                        예상 매도금: ${(realDivisions.filter(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= TRADING.SAFE.SELL_TARGET)).reduce((sum, d) => sum + d.holdings, 0) * todayClose).toFixed(0)}
-                      </div>
-                      <div style={{ 
-                        background: 'rgba(255,255,255,0.2)', 
-                        padding: '8px 12px', 
-                        borderRadius: 6,
-                        fontSize: 13,
-                        opacity: 0.9,
-                        marginTop: 8
-                      }}>
-                        💡 목표 수익률 +{(TRADING.SAFE.SELL_TARGET * 100).toFixed(1)}% 달성
-                      </div>
+                      {(() => {
+                        const sellDivs = realDivisions.filter(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= effectiveThresholds.sell));
+                        const sellQty = sellDivs.reduce((sum, d) => sum + d.holdings, 0);
+                        return (
+                          <>
+                            <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 24 }}>💰</span>
+                              <span style={{ fontWeight: 'bold' }}>매도 신호 발생!</span>
+                            </div>
+                            <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>{sellQty}주</div>
+                            <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>예상 체결가: ${todayClose.toFixed(2)}</div>
+                            <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>예상 매도금: ${(sellQty * todayClose).toFixed(0)}</div>
+                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '8px 12px', borderRadius: 6, fontSize: 13, opacity: 0.9, marginTop: 8 }}>
+                              💡 목표 수익률 +{(effectiveThresholds.sell * 100).toFixed(1)}% 달성
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </Col>
                 </>
@@ -291,19 +292,12 @@ export default function Home() {
                   <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                     <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
                     <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>관망 (대기 중)</div>
-                    <div style={{ 
-                      fontSize: 15, 
-                      opacity: 0.85,
-                      background: 'rgba(255,255,255,0.1)',
-                      padding: '12px 24px',
-                      borderRadius: 8,
-                      display: 'inline-block'
-                    }}>
+                    <div style={{ fontSize: 15, opacity: 0.85, background: 'rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: 8, display: 'inline-block' }}>
                       <div style={{ marginBottom: 8 }}>
-                        📉 매수 조건: 전일 대비 <strong>{(TRADING.SAFE.BUY_TARGET * 100).toFixed(1)}%</strong> 필요 (현재: {changePercent.toFixed(2)}%)
+                        📉 매수 조건: 전일 대비 <strong>{Math.abs(effectiveThresholds.buy * 100).toFixed(1)}%</strong> 필요 (현재: {changePercent.toFixed(2)}%)
                       </div>
                       <div>
-                        📈 매도 조건: 보유 분할의 수익률 <strong>+{(TRADING.SAFE.SELL_TARGET * 100).toFixed(1)}%</strong> 필요
+                        📈 매도 조건: 보유 분할의 수익률 <strong>+{(effectiveThresholds.sell * 100).toFixed(1)}%</strong> 필요
                       </div>
                     </div>
                   </div>
@@ -384,12 +378,12 @@ export default function Home() {
           <Card title="📖 동파법 거래 가이드">
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Alert
-                message="안전모드 (초보자 추천)"
+                message="안전모드 — RSI 하락 중 / 50선 하향 / 과매수(>65)"
                 description={
                   <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    <li>매수 조건: 전일 대비 {(TRADING.SAFE.BUY_TARGET * 100).toFixed(1)}% 이상 하락</li>
-                    <li>매도 조건: +{(TRADING.SAFE.SELL_TARGET * 100).toFixed(1)}% 수익 또는 {TRADING.SAFE.HOLDING_DAYS}일 경과</li>
-                    <li>{DEFAULT_CONFIG.divisions}분할 독립 운영</li>
+                    <li>매수 조건: 전일 대비 -{Math.abs(TRADING.SAFE.BUY_TARGET * 100).toFixed(0)}% 이상 하락 시</li>
+                    <li>매도 조건: +{(TRADING.SAFE.SELL_TARGET * 100).toFixed(0)}% 수익 달성 또는 최대 {TRADING.SAFE.HOLDING_DAYS}거래일 경과 시</li>
+                    <li>하락장 방어 집중 — 작은 수익 빠르게 실현</li>
                   </ul>
                 }
                 type="success"
@@ -397,12 +391,12 @@ export default function Home() {
               />
 
               <Alert
-                message="공세모드 (경험자 전용)"
+                message="공세모드 — RSI 상승 중 / 50선 상향 돌파"
                 description={
                   <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    <li>매수 조건: 전일 대비 {(TRADING.AGGRESSIVE.BUY_TARGET * 100).toFixed(1)}% 이상 하락</li>
-                    <li>매도 조건: +{(TRADING.AGGRESSIVE.SELL_TARGET * 100).toFixed(1)}% 수익 또는 {TRADING.AGGRESSIVE.HOLDING_DAYS}일 경과</li>
-                    <li>높은 수익, 높은 위험</li>
+                    <li>매수 조건: 전일 대비 -{Math.abs(TRADING.AGGRESSIVE.BUY_TARGET * 100).toFixed(0)}% 이상 하락 시 (더 큰 조정 대기)</li>
+                    <li>매도 조건: +{(TRADING.AGGRESSIVE.SELL_TARGET * 100).toFixed(0)}% 수익 달성 또는 최대 {TRADING.AGGRESSIVE.HOLDING_DAYS}거래일 경과 시</li>
+                    <li>상승 추세 활용 — 짧게 보유, 큰 수익 추구</li>
                   </ul>
                 }
                 type="warning"
@@ -410,13 +404,40 @@ export default function Home() {
               />
 
               <Alert
+                message="강세모드 — 주간 RSI 55~65 구간에서 상승 중"
+                description={
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <li>매수 조건: 전일 대비 -{Math.abs(TRADING.BULL.BUY_TARGET * 100).toFixed(0)}% 이상 하락 시</li>
+                    <li>매도 조건: +{(TRADING.BULL.SELL_TARGET * 100).toFixed(0)}% 수익 달성 또는 최대 {TRADING.BULL.HOLDING_DAYS}거래일 경과 시</li>
+                    <li>강세 추세 추종 — 장기 보유로 큰 수익 극대화</li>
+                  </ul>
+                }
+                type="info"
+                showIcon
+              />
+
+              <Alert
+                message="현금보유 모드 — 주간 RSI < 40 하락 중"
+                description={
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <li>신규 매수 전면 중단</li>
+                    <li>보유 중인 분할은 매도 조건 도달 시 정상 청산</li>
+                    <li>하락장 진입 감지 — 현금 비중 확대로 자산 보호</li>
+                  </ul>
+                }
+                type="error"
+                showIcon
+              />
+
+              <Alert
                 message="💡 핵심 원칙"
                 description={
                   <div>
-                    <p><strong>1. 분할별 독립 운영:</strong> 각 분할은 개별 포트폴리오로 관리</p>
-                    <p><strong>2. 종가 기준:</strong> 모든 매매 판단은 종가 기준</p>
-                    <p><strong>3. 순매매 실행:</strong> 하루 총매수량 - 총매도량 = 실제 주문량</p>
-                    <p style={{ marginBottom: 0 }}><strong>4. 자동 손절:</strong> 최대 보유기간 도달 시 자동 매도</p>
+                    <p><strong>1. 분할별 독립 운영:</strong> 각 분할은 개별 포트폴리오로 관리 ({DEFAULT_CONFIG.divisions}분할)</p>
+                    <p><strong>2. 종가 기준:</strong> 모든 매매 판단은 당일 종가 기준</p>
+                    <p><strong>3. LOC 주문:</strong> 장 마감 전 지정가(LOC)로 종가 체결</p>
+                    <p><strong>4. 자동 손절:</strong> 최대 보유기간 도달 시 강제 매도</p>
+                    <p style={{ marginBottom: 0 }}><strong>5. RSI 자동모드 권장:</strong> 시장 국면에 따라 4가지 모드 자동 전환</p>
                   </div>
                 }
                 type="info"

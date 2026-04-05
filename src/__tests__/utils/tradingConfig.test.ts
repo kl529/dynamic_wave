@@ -32,12 +32,12 @@ describe('tradingConfig', () => {
     describe('safe mode', () => {
       const config = getModeConfig('safe');
 
-      it('should have 0.2% sell target', () => {
-        expect(config.sellTarget).toBe(0.002);
+      it('should have 0.5% sell target', () => {
+        expect(config.sellTarget).toBe(0.005);
       });
 
-      it('should have 3% buy target', () => {
-        expect(config.buyTarget).toBe(0.03);
+      it('should have -3% buy target (drop threshold)', () => {
+        expect(config.buyTarget).toBe(-0.03);
       });
 
       it('should have 30 holding days', () => {
@@ -60,12 +60,12 @@ describe('tradingConfig', () => {
         expect(config.sellTarget).toBe(0.025);
       });
 
-      it('should have 5% buy target', () => {
-        expect(config.buyTarget).toBe(0.05);
+      it('should have -5% buy target (drop threshold)', () => {
+        expect(config.buyTarget).toBe(-0.05);
       });
 
-      it('should have 7 holding days', () => {
-        expect(config.holdingDays).toBe(7);
+      it('should have 10 holding days', () => {
+        expect(config.holdingDays).toBe(10);
       });
 
       it('should have 80% profit reinvest', () => {

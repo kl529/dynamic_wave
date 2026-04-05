@@ -12,7 +12,7 @@ interface DivisionPortfolio {
   avgPrice: number;
   buyDate: string | null;
   status: 'EMPTY' | 'HOLDING';
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull';
 }
 
 interface CurrentInvestmentStatusProps {

@@ -29,7 +29,7 @@ export interface WeeklyRSIData {
 }
 
 export interface WeeklyModeInfo {
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash';
   reason: string;
   lastWeekRSI: number | null;
   twoWeeksAgoRSI: number | null;
@@ -48,47 +48,36 @@ export function calculateRSI(
   period: number = 14
 ): (MarketData & { rsi: number | null })[] {
   if (!priceData || priceData.length < period + 1) {
-    return priceData.map(d => ({ ...d, rsi: 50 })); // 데이터 부족 시 중립값 50
+    return priceData.map(d => ({ ...d, rsi: 50 as number | null }));
   }
 
-  const result: (MarketData & { rsi: number | null })[] = [];
+  const result: (MarketData & { rsi: number | null })[] = priceData.map(d => ({ ...d, rsi: null }));
 
-  for (let i = 0; i < priceData.length; i++) {
-    if (i < period) {
-      // 초기 RSI는 계산 불가
-      result.push({ ...priceData[i], rsi: null });
-      continue;
-    }
+  // 첫 period일: SMA로 avgGain/avgLoss 초기화 (Wilder's RSI 표준)
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = priceData[i].price - priceData[i - 1].price;
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
 
-    let gains = 0;
-    let losses = 0;
+  result[period].rsi = avgLoss === 0
+    ? 100
+    : Math.round((100 - 100 / (1 + avgGain / avgLoss)) * 100) / 100;
 
-    // 최근 period일간의 가격 변화 계산
-    for (let j = i - period + 1; j <= i; j++) {
-      const change = priceData[j].price - priceData[j - 1].price;
-      if (change > 0) {
-        gains += change;
-      } else {
-        losses += Math.abs(change);
-      }
-    }
+  // period+1 이후: Wilder's 지수평활 (SMMA)
+  // avgGain = (prevAvgGain × (period-1) + todayGain) / period
+  for (let i = period + 1; i < priceData.length; i++) {
+    const change = priceData[i].price - priceData[i - 1].price;
+    avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
 
-    const avgGain = gains / period;
-    const avgLoss = losses / period;
-
-    // RSI 계산
-    let rsi = 50; // 기본값
-    if (avgLoss === 0) {
-      rsi = 100; // 모두 상승
-    } else {
-      const rs = avgGain / avgLoss;
-      rsi = 100 - (100 / (1 + rs));
-    }
-
-    result.push({
-      ...priceData[i],
-      rsi: Math.round(rsi * 100) / 100 // 소수점 2자리
-    });
+    result[i].rsi = avgLoss === 0
+      ? 100
+      : Math.round((100 - 100 / (1 + avgGain / avgLoss)) * 100) / 100;
   }
 
   return result;
@@ -369,40 +358,34 @@ export function calculateWeeklyRSI(priceData: MarketData[], period: number = 14)
     }));
   }
 
-  // 2. 주간 종가로 RSI 계산
+  // 2. 주간 종가로 RSI 계산 (Wilder's Smoothed Moving Average)
   const prices = weeklyData.map(d => d.price);
-  const rsiValues: (number | null)[] = [];
+  const rsiValues: (number | null)[] = new Array(prices.length).fill(null);
 
-  for (let i = 0; i < prices.length; i++) {
-    if (i < period) {
-      rsiValues.push(null);
-      continue;
-    }
+  // 첫 period주: SMA 초기화
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = prices[i] - prices[i - 1];
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
 
-    let gains = 0;
-    let losses = 0;
+  rsiValues[period] = avgLoss === 0
+    ? 100
+    : Math.round((100 - 100 / (1 + avgGain / avgLoss)) * 100) / 100;
 
-    for (let j = i - period + 1; j <= i; j++) {
-      const change = prices[j] - prices[j - 1];
-      if (change > 0) {
-        gains += change;
-      } else {
-        losses += Math.abs(change);
-      }
-    }
+  // period+1 이후: Wilder's 지수평활
+  for (let i = period + 1; i < prices.length; i++) {
+    const change = prices[i] - prices[i - 1];
+    avgGain = (avgGain * (period - 1) + (change > 0 ? change : 0)) / period;
+    avgLoss = (avgLoss * (period - 1) + (change < 0 ? Math.abs(change) : 0)) / period;
 
-    const avgGain = gains / period;
-    const avgLoss = losses / period;
-
-    let rsi = 50;
-    if (avgLoss === 0) {
-      rsi = 100;
-    } else {
-      const rs = avgGain / avgLoss;
-      rsi = 100 - (100 / (1 + rs));
-    }
-
-    rsiValues.push(Math.round(rsi * 100) / 100);
+    rsiValues[i] = avgLoss === 0
+      ? 100
+      : Math.round((100 - 100 / (1 + avgGain / avgLoss)) * 100) / 100;
   }
 
   // 3. 결과 반환
@@ -416,11 +399,16 @@ export function calculateWeeklyRSI(priceData: MarketData[], period: number = 14)
 
 /**
  * 지난주 RSI와 지지난주 RSI 비교로 모드 결정
+ *
+ * 모드 우선순위:
+ *   safe     - RSI 하락 중, 50선 하향돌파, RSI > 65 (과매수)
+ *   bull     - RSI 55-65 구간에서 상승 중 (강세 추세: 매수 조건 완화 -2%)
+ *   aggressive - 그 외 상승 구간 (일반 반등/상향돌파)
  */
 export function determineWeeklyMode(
   lastWeekRSI: number | null,
   twoWeeksAgoRSI: number | null
-): { mode: 'safe' | 'aggressive'; reason: string } {
+): { mode: 'safe' | 'aggressive' | 'bull' | 'cash'; reason: string } {
   if (lastWeekRSI === null || twoWeeksAgoRSI === null) {
     return { mode: 'safe', reason: 'RSI 데이터 부족 - 안전모드' };
   }
@@ -428,6 +416,14 @@ export function determineWeeklyMode(
   const isRising = lastWeekRSI > twoWeeksAgoRSI;
   const isFalling = lastWeekRSI < twoWeeksAgoRSI;
   const rsiChange = lastWeekRSI - twoWeeksAgoRSI;
+
+  // 현금 보유 모드: RSI < 40 하락 중 → 하락장 진입, 신규 매수 중단 + 보유 포지션 청산
+  if (isFalling && lastWeekRSI < 40) {
+    return {
+      mode: 'cash',
+      reason: `RSI ${lastWeekRSI.toFixed(1)} (하락장 감지 — 현금 보유, 매수 중단)`
+    };
+  }
 
   // 안전모드 조건
   if (isFalling) {
@@ -448,6 +444,14 @@ export function determineWeeklyMode(
     return {
       mode: 'safe',
       reason: `RSI 과매수 구간 (${lastWeekRSI.toFixed(1)})`
+    };
+  }
+
+  // 강세모드 조건: RSI 55-65 구간에서 상승 중 → 매수 조건 완화 (-2%)
+  if (lastWeekRSI >= 55 && lastWeekRSI <= 65 && isRising) {
+    return {
+      mode: 'bull',
+      reason: `RSI 강세 구간 상승 중 (${twoWeeksAgoRSI.toFixed(1)} → ${lastWeekRSI.toFixed(1)}, +${rsiChange.toFixed(1)}) — 매수 -2% 완화`
     };
   }
 
@@ -517,7 +521,7 @@ export function getWeeklyRSIModeInfo(priceData: MarketData[]): WeeklyModeInfo {
  */
 export function enrichDataWithWeeklyRSIMode(
   priceData: MarketData[]
-): (MarketData & { mode: 'safe' | 'aggressive'; modeReason: string })[] {
+): (MarketData & { mode: 'safe' | 'aggressive' | 'bull' | 'cash'; modeReason: string })[] {
   const weeklyRSI = calculateWeeklyRSI(priceData);
 
   if (weeklyRSI.length < 2) {
@@ -535,7 +539,7 @@ export function enrichDataWithWeeklyRSIMode(
   }
 
   // 각 일간 데이터에 모드 적용
-  let currentMode: 'safe' | 'aggressive' = 'safe';
+  let currentMode: 'safe' | 'aggressive' | 'bull' | 'cash' = 'safe';
   let currentReason = '초기값';
 
   return priceData.map((data, _index) => {

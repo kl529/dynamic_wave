@@ -5,7 +5,7 @@ import { Card, Statistic, Row, Col, Tag, Space, Tooltip } from 'antd';
 import { CalendarOutlined, DashboardOutlined, ArrowUpOutlined, ArrowDownOutlined, InfoCircleOutlined, SafetyOutlined, ThunderboltOutlined, CalculatorOutlined } from '@ant-design/icons';
 
 interface RSIModeInfo {
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash';
   rsi: number | null;
   prevRSI: number | null;
   reason: string;
@@ -69,21 +69,14 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const actualMode = mode === 'auto' && rsiModeInfo ? rsiModeInfo.mode : mode;
   
   // 모드 정보
-  const modeInfo = actualMode === 'safe' ? {
-    label: '안전모드',
-    color: '#52c41a',
-    icon: <SafetyOutlined />,
-    buyThreshold: -3.0,
-    sellThreshold: 0.2,
-    maxHoldDays: 30
-  } : {
-    label: '공세모드',
-    color: '#ff4d4f',
-    icon: <ThunderboltOutlined />,
-    buyThreshold: -5.0,
-    sellThreshold: 2.5,
-    maxHoldDays: 7
+  const modeInfoMap = {
+    safe:       { label: '안전모드', color: '#52c41a', icon: <SafetyOutlined />,       buyThreshold: -3.0, sellThreshold: 2.0,  maxHoldDays: 20 },
+    aggressive: { label: '공세모드', color: '#ff4d4f', icon: <ThunderboltOutlined />,  buyThreshold: -5.0, sellThreshold: 8.0,  maxHoldDays: 7  },
+    bull:       { label: '강세모드', color: '#52c41a', icon: <ThunderboltOutlined />,  buyThreshold: -3.0, sellThreshold: 12.0, maxHoldDays: 45 },
+    cash:       { label: '현금보유', color: '#888888', icon: <SafetyOutlined />,       buyThreshold: 0,    sellThreshold: 0,    maxHoldDays: 0  },
+    auto:       { label: '자동모드', color: '#1890ff', icon: <SafetyOutlined />,       buyThreshold: -3.0, sellThreshold: 2.0,  maxHoldDays: 20 }
   };
+  const modeInfo = modeInfoMap[actualMode] || modeInfoMap.safe;
 
   return (
     <Card className="today-overview" style={{ marginBottom: 16 }}>
@@ -109,9 +102,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>현재 모드</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Tag 
+                <Tag
                   icon={modeInfo.icon}
-                  color={actualMode === 'safe' ? 'success' : 'error'} 
+                  color={actualMode === 'safe' ? 'success' : actualMode === 'bull' ? 'green' : 'error'}
                   style={{ fontSize: 14, padding: '4px 12px', margin: 0 }}
                 >
                   {modeInfo.label}

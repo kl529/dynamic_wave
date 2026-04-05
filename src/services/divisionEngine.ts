@@ -7,12 +7,13 @@ import {
   DivisionAction,
   DailyTradeRecord
 } from '@/types';
-import { getModeConfig, getTotalFeeRate, calculateTradingDays } from '@/utils/tradingConfig';
+import { getModeConfig, getTotalFeeRate, calculateTradingDays, ModeConfig } from '@/utils/tradingConfig';
 import { TRADING } from '@/constants';
 
-type DivisionEngineMode = 'safe' | 'aggressive';
+type DivisionEngineMode = 'safe' | 'aggressive' | 'bull' | 'cash';
 type DivisionEngineConfig = Omit<DongpaConfig, 'mode'> & {
   mode: DivisionEngineMode | 'auto';
+  hybrid?: boolean; // B&H + 동파법 하이브리드 모드
 };
 
 /**
@@ -20,18 +21,36 @@ type DivisionEngineConfig = Omit<DongpaConfig, 'mode'> & {
  *
  * 핵심 원칙:
  * 1. 각 분할은 독립적인 포트폴리오로 운영
- * 2. EMPTY 상태 분할만 매수 가능
+ * 2. EMPTY 상태 분할만 매수 가능 (순번 기준, HOLDING 분할은 건너뜀)
  * 3. HOLDING 상태 분할은 매도 완료 후 EMPTY로 전환
- * 4. N일마다 전체 자산을 합쳐서 재분할
+ * 4. N일마다 전체 현금을 모아서 재분할
+ * 5. 같은 날 매수+매도 발생 시 분할 간 퉁치기 (수수료 절감)
  */
 export class DivisionEngine {
   private config: DivisionEngineConfig;
-  private nextDivisionIndex = 0; // 다음 매수에 사용할 분할(0-based)
+  private nextDivisionIndex = 0;
   private activeMode: DivisionEngineMode;
+  private customModeConfigs?: Partial<Record<'safe' | 'aggressive' | 'bull' | 'cash', Partial<ModeConfig>>>;
 
-  constructor(config: DivisionEngineConfig) {
+  constructor(
+    config: DivisionEngineConfig,
+    customModeConfigs?: Partial<Record<'safe' | 'aggressive' | 'bull' | 'cash', Partial<ModeConfig>>>
+  ) {
     this.config = config;
     this.activeMode = config.mode === 'aggressive' ? 'aggressive' : 'safe';
+    this.customModeConfigs = customModeConfigs;
+  }
+
+  /**
+   * 커스텀 오버라이드가 있으면 합쳐서 반환, 없으면 기본값 사용
+   * cash 모드는 safe 설정을 기반으로 함 (매도 임계값 계산용)
+   */
+  private getEffectiveModeConfig(mode: DivisionEngineMode): ModeConfig {
+    const baseMode = mode === 'cash' ? 'safe' : mode;
+    const base = getModeConfig(baseMode);
+    const custom = this.customModeConfigs?.[mode];
+    if (!custom) return base;
+    return { ...base, ...custom };
   }
 
   private setActiveMode(mode: DivisionEngineMode) {
@@ -41,9 +60,7 @@ export class DivisionEngine {
   private syncModeForDate(date: string, modesByDate?: Map<string, DivisionEngineMode>) {
     if (this.config.mode === 'auto') {
       const resolved = modesByDate?.get(date);
-      if (resolved) {
-        this.setActiveMode(resolved);
-      }
+      if (resolved) this.setActiveMode(resolved);
     } else {
       this.setActiveMode(this.config.mode);
     }
@@ -81,63 +98,69 @@ export class DivisionEngine {
   }
 
   /**
-   * 재분할 실행 - N일마다 전체 자산을 합쳐서 균등 재분할
+   * 재분할: 전체 현금을 모아서 올바르게 재배분
+   *
+   * 알고리즘:
+   * 1. 모든 분할의 현금을 풀에 모음 (주식은 그대로 유지)
+   * 2. HOLDING 분할에 우선 배분: 목표금액 - 보유주식가치 (양수인 경우만)
+   * 3. 나머지 현금을 EMPTY 분할에 균등 배분
+   *
+   * 재분할 전후 총 자산이 항상 동일하게 유지됨.
    */
   public rebalanceDivisions(
     currentDivisions: DivisionPortfolio[],
     currentPrice: number
   ): DivisionPortfolio[] {
-    // 1. 전체 자산 계산 (현금 + 평가금액)
     const totalCash = currentDivisions.reduce((sum, div) => sum + div.cash, 0);
-    const totalValue = currentDivisions.reduce(
-      (sum, div) => sum + (div.holdings * currentPrice),
+    const totalStockValue = currentDivisions.reduce(
+      (sum, div) => sum + div.holdings * currentPrice,
       0
     );
-    const totalAssets = totalCash + totalValue;
-
-    // 2. 새로운 분할금액 계산
+    const totalAssets = totalCash + totalStockValue;
     const newDivisionAmount = totalAssets / this.config.divisions;
 
-    // 3. 새 분할 포트폴리오 생성
-    const rebalancedDivisions: DivisionPortfolio[] = [];
+    // HOLDING 분할별 필요 현금 계산 (목표금액 - 보유주식 가치, 최소 0)
+    let totalCashForHolding = 0;
+    const holdingCashNeeds: number[] = currentDivisions.map(div => {
+      if (div.status !== 'HOLDING') return 0;
+      const stockValue = div.holdings * currentPrice;
+      const needed = Math.max(0, newDivisionAmount - stockValue);
+      totalCashForHolding += needed;
+      return needed;
+    });
 
-    for (let i = 1; i <= this.config.divisions; i++) {
-      const oldDivision = currentDivisions[i - 1];
+    // 현금 풀이 부족하면 HOLDING 배분 비례 축소
+    const holdingScale = totalCashForHolding > 0
+      ? Math.min(1, totalCash / totalCashForHolding)
+      : 1;
 
-      // HOLDING 상태인 분할은 보유 유지, 나머지는 현금으로 재분할
-      if (oldDivision.status === 'HOLDING') {
-        // 보유중인 주식 가치
-        const holdingValue = oldDivision.holdings * currentPrice;
-        // 남은 현금 = 새 분할금액 - 보유 가치
-        const newCash = Math.max(0, newDivisionAmount - holdingValue);
+    const actualCashForHolding = holdingCashNeeds.reduce((s, n) => s + n * holdingScale, 0);
+    const remainingCash = totalCash - actualCashForHolding;
+    const emptyCount = currentDivisions.filter(d => d.status === 'EMPTY').length;
+    const cashPerEmpty = emptyCount > 0 ? remainingCash / emptyCount : 0;
 
-        rebalancedDivisions.push({
-          ...oldDivision,
-          cash: newCash
-        });
-      } else {
-        // EMPTY 상태는 새 분할금액으로 초기화
-        rebalancedDivisions.push({
-          divisionName: `분할${i}`,
-          divisionNumber: i,
-          status: 'EMPTY',
-          cash: newDivisionAmount,
-          holdings: 0,
-          avgPrice: 0,
-          buyDate: '',
-          buyPrice: 0,
-          totalCost: 0,
-          currentValue: 0,
-          unrealizedPL: 0,
-          unrealizedPLRate: 0,
-          buyLimitPrice: 0,
-          sellLimitPrice: 0,
-          tradingDaysHeld: 0
-        });
+    return currentDivisions.map((div, i) => {
+      if (div.status === 'HOLDING') {
+        return { ...div, cash: holdingCashNeeds[i] * holdingScale };
       }
-    }
-
-    return rebalancedDivisions;
+      return {
+        divisionName: div.divisionName,
+        divisionNumber: div.divisionNumber,
+        status: 'EMPTY' as const,
+        cash: cashPerEmpty,
+        holdings: 0,
+        avgPrice: 0,
+        buyDate: '',
+        buyPrice: 0,
+        totalCost: 0,
+        currentValue: 0,
+        unrealizedPL: 0,
+        unrealizedPLRate: 0,
+        buyLimitPrice: 0,
+        sellLimitPrice: 0,
+        tradingDaysHeld: 0
+      };
+    });
   }
 
   /**
@@ -148,121 +171,87 @@ export class DivisionEngine {
     currentPrice: number,
     currentDate: string
   ): DivisionPortfolio[] {
-    const modeConfig = getModeConfig(this.activeMode);
+    const modeConfig = this.getEffectiveModeConfig(this.activeMode);
 
     return divisions.map(div => {
       if (div.status === 'EMPTY') {
-        // 매수 지정가만 계산
-        const buyLimitPrice = currentPrice * (1 + modeConfig.buyTarget);
-
         return {
           ...div,
-          buyLimitPrice,
+          buyLimitPrice: currentPrice * (1 + modeConfig.buyTarget),
           sellLimitPrice: 0,
           tradingDaysHeld: 0,
           currentValue: 0,
           unrealizedPL: 0,
           unrealizedPLRate: 0
         };
-      } else {
-        // HOLDING 상태
-        const currentValue = div.holdings * currentPrice;
-        const unrealizedPL = currentValue - div.totalCost;
-        const unrealizedPLRate = div.totalCost > 0 
-          ? (unrealizedPL / div.totalCost) * 100 
-          : 0;
-
-        // 매도 지정가 계산
-        const sellLimitPrice = div.avgPrice * (1 + modeConfig.sellTarget);
-
-        // 거래일 기준 보유기간
-        const tradingDaysHeld = div.buyDate
-          ? calculateTradingDays(div.buyDate, currentDate)
-          : 0;
-
-        // 매수 지정가 (보유중이어도 표시)
-        const buyLimitPrice = currentPrice * (1 + modeConfig.buyTarget);
-
-        return {
-          ...div,
-          currentValue,
-          unrealizedPL,
-          unrealizedPLRate,
-          buyLimitPrice,
-          sellLimitPrice,
-          tradingDaysHeld
-        };
       }
+
+      const currentValue = div.holdings * currentPrice;
+      const unrealizedPL = currentValue - div.totalCost;
+      const unrealizedPLRate = div.totalCost > 0
+        ? (unrealizedPL / div.totalCost) * 100
+        : 0;
+      const sellLimitPrice = div.avgPrice * (1 + modeConfig.sellTarget);
+      const tradingDaysHeld = div.buyDate
+        ? calculateTradingDays(div.buyDate, currentDate)
+        : 0;
+
+      return {
+        ...div,
+        currentValue,
+        unrealizedPL,
+        unrealizedPLRate,
+        buyLimitPrice: currentPrice * (1 + modeConfig.buyTarget),
+        sellLimitPrice,
+        tradingDaysHeld
+      };
     });
   }
 
   /**
    * 단일 분할 매수 체크
-   * LOC (Limit-on-Close): 지정가 이상으로 종가가 형성되면 체결
+   * LOC (Limit-on-Close): 전일 대비 변동률 ≤ buyTarget이면 종가에 매수
+   * buyTarget은 음수 (예: -0.03 = 3% 이상 하락 시 매수)
+   *
+   * prevClose가 null이면 첫날이므로 매수 안 함.
+   * 수량 계산 시 수수료 포함하여 정확한 최대 수량 산출.
    */
   private checkBuySignal(
     division: DivisionPortfolio,
     todayClose: number,
-    prevClose: number,
+    prevClose: number | null,
     date: string
   ): DivisionAction | null {
-    const modeConfig = getModeConfig(this.activeMode);
+    if (prevClose === null) return null;
+    if (this.activeMode === 'cash') return null; // 하락장 감지 — 신규 매수 차단
+    if (division.status !== 'EMPTY') return null;
+    if (!this.isDivisionEligibleForBuy(division)) return null;
+    if (division.cash < TRADING.MIN_CASH_FOR_TRADE) return null;
 
-    // EMPTY 상태가 아니면 매수 불가
-    if (division.status !== 'EMPTY') {
-      return null;
-    }
+    const changeRate = (todayClose - prevClose) / prevClose;
+    const modeConfig = this.getEffectiveModeConfig(this.activeMode);
 
-    // 지정된 순번이 아니라면 대기
-    if (!this.isDivisionEligibleForBuy(division)) {
-      return null;
-    }
+    if (changeRate > modeConfig.buyTarget) return null;
 
-    // 충분한 현금이 없으면 매수 불가
-    if (division.cash < TRADING.MIN_CASH_FOR_TRADE) {
-      return null;
-    }
-
-    // 변동률 계산
-    const changeRate = ((todayClose - prevClose) / prevClose);
-
-    // 매수 조건: 변동률 < buyTarget (목표 상승률보다 낮으면 매수)
-    // 예: 안전모드(3%) - 전일 대비 +2.9% 상승 or -5% 하락 → 매수
-    //     안전모드(3%) - 전일 대비 +3.1% 상승 → 매수 안함
-    if (changeRate >= modeConfig.buyTarget) {
-      return null; // 변동률이 목표 이상이면 매수 안함
-    }
-
-    // 매수 지정가 표시용 (실제로는 변동률로 판단)
     const buyLimitPrice = prevClose * (1 + modeConfig.buyTarget);
 
-    // 체결가는 오늘 종가 (LOC는 종가에 체결됨)
-    const executionPrice = todayClose;
+    // 수수료 포함 최대 매수 수량
+    const quantity = Math.floor(division.cash / (todayClose * (1 + getTotalFeeRate())));
+    if (quantity === 0) return null;
 
-    // 실제 매수 가능 수량 계산
-    const quantity = Math.floor(division.cash / executionPrice);
-    if (quantity === 0) {
-      return null;
-    }
-
-    const amount = quantity * executionPrice;
+    const amount = quantity * todayClose;
     const commission = amount * getTotalFeeRate();
-
-    // 수수료 포함해서 살 수 있는지 확인
-    if (division.cash < amount + commission) {
-      return null;
-    }
 
     return {
       divisionName: division.divisionName,
       divisionNumber: division.divisionNumber,
       action: 'BUY',
       quantity,
-      price: executionPrice,
+      price: todayClose,
       limitPrice: buyLimitPrice,
       amount,
       commission,
-      reason: `매수: 변동률 ${(changeRate * 100).toFixed(2)}% < 목표 ${(modeConfig.buyTarget * 100).toFixed(2)}%`
+      reason: `매수: 변동률 ${(changeRate * 100).toFixed(2)}% ≤ 목표 ${(modeConfig.buyTarget * 100).toFixed(2)}%`
     };
   }
 
@@ -275,27 +264,71 @@ export class DivisionEngine {
   }
 
   /**
+   * nextDivisionIndex를 다음 EMPTY 분할로 이동
+   * 현재 순번이 HOLDING이면 다음 EMPTY를 찾아 건너뜀
+   */
+  private advanceToNextEmpty(divisions: DivisionPortfolio[]): void {
+    const n = divisions.length;
+    for (let i = 0; i < n; i++) {
+      const idx = (this.nextDivisionIndex + i) % n;
+      if (divisions[idx].status === 'EMPTY') {
+        this.nextDivisionIndex = idx;
+        return;
+      }
+    }
+    // 모든 분할이 HOLDING → nextDivisionIndex 유지 (매수 불가)
+  }
+
+  /**
+   * cash 모드 청산: HOLDING 분할을 시장가로 즉시 전량 매도
+   */
+  private checkCashExitSignal(
+    division: DivisionPortfolio,
+    todayClose: number,
+    date: string
+  ): DivisionAction | null {
+    if (division.status !== 'HOLDING' || division.holdings === 0) return null;
+
+    const tradingDaysHeld = division.buyDate
+      ? calculateTradingDays(division.buyDate, date)
+      : 0;
+    const amount = division.holdings * todayClose;
+    const commission = amount * getTotalFeeRate();
+    const profit = amount - division.totalCost - commission;
+    const profitRate = (profit / division.totalCost) * 100;
+
+    return {
+      divisionName: division.divisionName,
+      divisionNumber: division.divisionNumber,
+      action: 'STOP_LOSS',
+      quantity: division.holdings,
+      price: todayClose,
+      limitPrice: todayClose,
+      amount,
+      commission,
+      profit,
+      profitRate,
+      tradingDaysHeld,
+      reason: `하락장 감지 — 전량 청산 (시장가 $${todayClose.toFixed(2)})`
+    };
+  }
+
+  /**
    * 단일 분할 매도 체크
-   * LOC (Limit-on-Close): 지정가 이상으로 종가가 형성되면 체결
    */
   private checkSellSignal(
     division: DivisionPortfolio,
     todayClose: number,
     date: string
   ): DivisionAction | null {
-    const modeConfig = getModeConfig(this.activeMode);
+    if (division.status !== 'HOLDING' || division.holdings === 0) return null;
 
-    // HOLDING 상태가 아니면 매도 불가
-    if (division.status !== 'HOLDING' || division.holdings === 0) {
-      return null;
-    }
-
-    // 거래일 기준 보유기간
+    const modeConfig = this.getEffectiveModeConfig(this.activeMode);
     const tradingDaysHeld = division.buyDate
       ? calculateTradingDays(division.buyDate, date)
       : 0;
 
-    // 조건 1: 최대 보유기간 도달 → 손절 (시장가 매도)
+    // 조건 1: 최대 보유기간 초과 → 시장가 손절
     if (tradingDaysHeld >= modeConfig.holdingDays) {
       const amount = division.holdings * todayClose;
       const commission = amount * getTotalFeeRate();
@@ -318,15 +351,9 @@ export class DivisionEngine {
       };
     }
 
-    // 조건 2: 목표 수익률 도달 → 지정가 매도
-    // 매도 지정가 = 평단가 × (1 + 목표수익률)
-    // 예: 평단가 $100 → 0.2% 수익 → 지정가 $100.20
+    // 조건 2: 목표 수익률 도달 → LOC 지정가 매도
     const sellLimitPrice = division.avgPrice * (1 + modeConfig.sellTarget);
-
-    // LOC 체결 조건: 오늘 종가 >= 매도 지정가
-    // 예: 오늘 종가 $100.50 >= 지정가 $100.20 → 체결!
     if (todayClose >= sellLimitPrice) {
-      // 체결가는 지정가 (LOC는 지정가 이상이면 지정가에 체결)
       const executionPrice = sellLimitPrice;
       const amount = division.holdings * executionPrice;
       const commission = amount * getTotalFeeRate();
@@ -352,9 +379,6 @@ export class DivisionEngine {
     return null;
   }
 
-  /**
-   * 분할별 매수 실행
-   */
   private executeBuy(
     division: DivisionPortfolio,
     action: DivisionAction,
@@ -372,9 +396,6 @@ export class DivisionEngine {
     };
   }
 
-  /**
-   * 분할별 매도 실행
-   */
   private executeSell(
     division: DivisionPortfolio,
     action: DivisionAction
@@ -392,229 +413,125 @@ export class DivisionEngine {
   }
 
   /**
-   * 분할별 퉁치기 (Netting) 처리
-   * 같은 분할에서 매수와 매도가 동시 발생 시 상계 처리
-   */
-  private netDivisionTrades(
-    buySignal: DivisionAction | null,
-    sellSignal: DivisionAction | null
-  ): {
-    netAction: DivisionAction | null;
-    shouldBuy: boolean;
-    shouldSell: boolean;
-  } {
-    // 둘 다 없으면 아무것도 안 함
-    if (!buySignal && !sellSignal) {
-      return { netAction: null, shouldBuy: false, shouldSell: false };
-    }
-
-    // 매수만 있음
-    if (buySignal && !sellSignal) {
-      return { netAction: buySignal, shouldBuy: true, shouldSell: false };
-    }
-
-    // 매도만 있음
-    if (!buySignal && sellSignal) {
-      return { netAction: sellSignal, shouldBuy: false, shouldSell: true };
-    }
-
-    // 둘 다 있음 → 퉁치기!
-    if (buySignal && sellSignal) {
-      const buyQty = buySignal.quantity;
-      const sellQty = sellSignal.quantity;
-
-      // 케이스 1: 매수 > 매도 → 순매수
-      if (buyQty > sellQty) {
-        const netQty = buyQty - sellQty;
-        const netAmount = netQty * buySignal.price;
-        const netCommission = netAmount * getTotalFeeRate();
-
-        return {
-          netAction: {
-            ...buySignal,
-            quantity: netQty,
-            amount: netAmount,
-            commission: netCommission,
-            reason: `퉁치기: 매수 ${buyQty}주 - 매도 ${sellQty}주 = 순매수 ${netQty}주`
-          },
-          shouldBuy: true,
-          shouldSell: true  // 기존 포지션 정리
-        };
-      }
-      // 케이스 2: 매도 > 매수 → 순매도
-      else if (sellQty > buyQty) {
-        const netQty = sellQty - buyQty;
-        const netAmount = netQty * sellSignal.price;
-        const netCommission = netAmount * getTotalFeeRate();
-
-        // 순매도 시 수익 재계산 (일부만 매도)
-        const avgProfit = sellQty > 0 ? (sellSignal.profit || 0) / sellQty : 0;
-        const netProfit = avgProfit * netQty - netCommission;
-        const netProfitRate = sellQty > 0 && sellSignal.profitRate
-          ? (sellSignal.profitRate * netQty) / sellQty
-          : 0;
-
-        return {
-          netAction: {
-            ...sellSignal,
-            quantity: netQty,
-            amount: netAmount,
-            commission: netCommission,
-            profit: netProfit,
-            profitRate: netProfitRate,
-            reason: `퉁치기: 매도 ${sellQty}주 - 매수 ${buyQty}주 = 순매도 ${netQty}주`
-          },
-          shouldBuy: false,
-          shouldSell: true
-        };
-      }
-      // 케이스 3: 매수 = 매도 → 퉁쳐서 0 (거래 없음)
-      else {
-        return {
-          netAction: {
-            divisionName: buySignal.divisionName,
-            divisionNumber: buySignal.divisionNumber,
-            action: 'HOLD',
-            quantity: 0,
-            price: buySignal.price,  // 매수/매도 가격 동일하므로 아무거나 사용
-            limitPrice: 0,
-            amount: 0,
-            commission: 0,
-            reason: `퉁치기: 매수 ${buyQty}주 = 매도 ${sellQty}주 (거래 없음, 수수료 절감)`
-          },
-          shouldBuy: false,
-          shouldSell: false
-        };
-      }
-    }
-
-    return { netAction: null, shouldBuy: false, shouldSell: false };
-  }
-
-  /**
-   * 일별 매매 실행 (모든 분할 체크 + 퉁치기)
+   * 일별 매매 실행 (분할 간 퉁치기 포함)
+   *
+   * Pass 1: 모든 분할의 매수/매도 신호 수집
+   * Pass 2: 분할 간 퉁치기 계산 → 겹치는 수량만큼 수수료 면제 비율 산출
+   * Pass 3: 조정된 수수료로 거래 실행 → 절감된 수수료는 수익에 반영
    */
   public processDailyTrade(
     date: string,
     todayClose: number,
-    prevClose: number,
+    prevClose: number | null,
     currentDivisions: DivisionPortfolio[],
     daysSinceStart: number
   ): DailyTradeRecord {
-    const modeConfig = getModeConfig(this.activeMode);
-    const changeRate = ((todayClose - prevClose) / prevClose) * 100;
+    const changeRate = prevClose !== null
+      ? ((todayClose - prevClose) / prevClose) * 100
+      : 0;
 
-    // 재분할 체크
     const isRebalanceDay =
       daysSinceStart > 0 && daysSinceStart % this.config.rebalancePeriod === 0;
 
     let divisions = [...currentDivisions];
 
-    // 재분할 실행
     if (isRebalanceDay) {
       divisions = this.rebalanceDivisions(divisions, todayClose);
     }
 
-    // 현재 상태 업데이트
     divisions = this.updateDivisionStatus(divisions, todayClose, date);
 
-    // 각 분할별 매수/매도 체크 + 퉁치기
+    // 다음 매수 순번을 EMPTY 분할로 이동 (HOLDING이면 건너뜀)
+    this.advanceToNextEmpty(divisions);
+
+    // Pass 1: 신호 수집 (하루 1분할 매수)
+    type SignalEntry = { divIdx: number; signal: DivisionAction; type: 'buy' | 'sell' };
+    const allSignals: SignalEntry[] = [];
+    let buyFound = false;
+
+    for (let i = 0; i < divisions.length; i++) {
+      const div = divisions[i];
+
+      // cash 모드: 일반 매도 조건 대신 전량 즉시 청산
+      const sellSignal = this.activeMode === 'cash'
+        ? this.checkCashExitSignal(div, todayClose, date)
+        : this.checkSellSignal(div, todayClose, date);
+      if (sellSignal) {
+        allSignals.push({ divIdx: i, signal: sellSignal, type: 'sell' });
+      }
+
+      if (!buyFound) {
+        const buySignal = this.checkBuySignal(div, todayClose, prevClose, date);
+        if (buySignal) {
+          allSignals.push({ divIdx: i, signal: buySignal, type: 'buy' });
+          buyFound = true;
+        }
+      }
+    }
+
+    // Pass 2: 퉁치기 계산
+    const buyEntries = allSignals.filter(s => s.type === 'buy');
+    const sellEntries = allSignals.filter(s => s.type === 'sell');
+    const totalBuyQty = buyEntries.reduce((s, b) => s + b.signal.quantity, 0);
+    const totalSellQty = sellEntries.reduce((s, s2) => s + s2.signal.quantity, 0);
+    const nettedQty = Math.min(totalBuyQty, totalSellQty);
+
+    // 퉁친 수량 비율만큼 수수료 면제
+    const buyCommFactor = totalBuyQty > 0
+      ? (totalBuyQty - nettedQty) / totalBuyQty
+      : 1;
+    const sellCommFactor = totalSellQty > 0
+      ? (totalSellQty - nettedQty) / totalSellQty
+      : 1;
+
+    // Pass 3: 거래 실행
     const divisionActions: DivisionAction[] = [];
     let totalBuyQuantity = 0;
     let totalSellQuantity = 0;
     let dailyRealizedPL = 0;
-    let hasBoughtToday = false; // 분할당 1일 1매수 제한
 
-    divisions = divisions.map(div => {
-      // 매도 신호 체크
-      const sellSignal = this.checkSellSignal(div, todayClose, date);
+    for (const { divIdx, signal, type } of allSignals) {
+      if (type === 'buy') {
+        const commission = signal.commission * buyCommFactor;
+        const adjustedSignal: DivisionAction = { ...signal, commission };
+        divisionActions.push(adjustedSignal);
+        divisions[divIdx] = this.executeBuy(divisions[divIdx], adjustedSignal, date);
+        totalBuyQuantity += signal.quantity;
+        this.advanceDivisionPointer();
+      } else {
+        const commission = signal.commission * sellCommFactor;
+        // 수수료 절감분을 수익에 반영
+        const profit = (signal.profit ?? 0) + (signal.commission - commission);
+        const profitRate = divisions[divIdx].totalCost > 0
+          ? (profit / divisions[divIdx].totalCost) * 100
+          : (signal.profitRate ?? 0);
+        const adjustedSignal: DivisionAction = { ...signal, commission, profit, profitRate };
+        divisionActions.push(adjustedSignal);
+        divisions[divIdx] = this.executeSell(divisions[divIdx], adjustedSignal);
+        totalSellQuantity += signal.quantity;
+        dailyRealizedPL += profit;
+      }
+    }
 
-      // 매수 신호 체크 (EMPTY일 때만 가능하지만, 퉁치기 위해 항상 체크)
-      const buySignal = div.status === 'EMPTY' && !hasBoughtToday
-        ? this.checkBuySignal(div, todayClose, prevClose, date)
-        : null;
-
-      // 퉁치기 처리
-      const { netAction, shouldBuy, shouldSell } = this.netDivisionTrades(
-        buySignal,
-        sellSignal
-      );
-
-        if (netAction) {
-          divisionActions.push(netAction);
-
-          // 실제 거래 실행
-          if (netAction.action === 'HOLD') {
-            // 퉁쳐서 0: 아무것도 안 함
-            return div;
-          } else if (shouldSell && shouldBuy) {
-            // 순매수: 기존 포지션 정리 + 새 매수
-            const newDiv = this.executeSell(div, sellSignal!);
-            const finalDiv = this.executeBuy(newDiv, netAction, date);
-            totalBuyQuantity += netAction.quantity;
-            totalSellQuantity += sellSignal!.quantity;
-            dailyRealizedPL += sellSignal!.profit || 0;
-            hasBoughtToday = true;
-            this.advanceDivisionPointer();
-            return finalDiv;
-          } else if (shouldSell) {
-            // 순매도 또는 매도만
-            totalSellQuantity += netAction.quantity;
-            dailyRealizedPL += netAction.profit || 0;
-            return this.executeSell(div, netAction);
-          } else if (shouldBuy) {
-            // 매수만
-            totalBuyQuantity += netAction.quantity;
-            hasBoughtToday = true;
-            this.advanceDivisionPointer();
-            return this.executeBuy(div, netAction, date);
-          }
-        }
-
-        return div;
-    });
-
-    // 전체 자산 계산
     const totalCash = divisions.reduce((sum, div) => sum + div.cash, 0);
     const totalHoldings = divisions.reduce((sum, div) => sum + div.holdings, 0);
     const totalValue = divisions.reduce((sum, div) => sum + div.currentValue, 0);
     const totalAssets = totalCash + totalValue;
     const returnRate = ((totalAssets - this.config.initialCapital) / this.config.initialCapital) * 100;
 
-    // 🎯 퉁치기 계산
     const netQuantity = totalBuyQuantity - totalSellQuantity;
-    const isNetted = totalBuyQuantity > 0 && totalSellQuantity > 0; // 매수와 매도가 같은 날 발생
-
-    let actualTradeQuantity = 0;
-    let actualTradeType: 'BUY' | 'SELL' | 'NONE' = 'NONE';
-    let savedCommission = 0;
-
-    if (isNetted) {
-      // 퉁치기 적용: 순매매량만 거래
-      actualTradeQuantity = Math.abs(netQuantity);
-      actualTradeType = netQuantity > 0 ? 'BUY' : (netQuantity < 0 ? 'SELL' : 'NONE');
-
-      // 절약한 수수료 = 상쇄된 수량의 수수료 (양방향)
-      const nettedQuantity = Math.min(totalBuyQuantity, totalSellQuantity);
-      const nettedAmount = nettedQuantity * todayClose;
-      savedCommission = nettedAmount * getTotalFeeRate() * 2; // 매수+매도 수수료
-    } else {
-      // 퉁치기 없음: 그대로 거래
-      if (totalBuyQuantity > 0) {
-        actualTradeQuantity = totalBuyQuantity;
-        actualTradeType = 'BUY';
-      } else if (totalSellQuantity > 0) {
-        actualTradeQuantity = totalSellQuantity;
-        actualTradeType = 'SELL';
-      }
-    }
+    const isNetted = nettedQty > 0;
+    const savedCommission = nettedQty * todayClose * getTotalFeeRate() * 2;
+    const actualTradeQuantity = Math.abs(netQuantity);
+    const actualTradeType: 'BUY' | 'SELL' | 'NONE' =
+      netQuantity > 0 ? 'BUY' : netQuantity < 0 ? 'SELL' : 'NONE';
 
     return {
       date,
       closePrice: todayClose,
-      prevClosePrice: prevClose,
+      prevClosePrice: prevClose ?? todayClose,
       changeRate,
-      mode: this.activeMode, // 현재 설정된 모드 (RSI 기반으로 변경될 수 있음)
+      mode: this.activeMode,
       divisionActions,
       divisionPortfolios: divisions,
       totalBuyQuantity,
@@ -636,16 +553,31 @@ export class DivisionEngine {
   }
 
   /**
+   * SMA 계산 (단순이동평균)
+   */
+  private computeSMA(data: MarketData[], period: number): Map<string, number> {
+    const out = new Map<string, number>();
+    for (let i = period - 1; i < data.length; i++) {
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) sum += data[j].price;
+      out.set(data[i].date, sum / period);
+    }
+    return out;
+  }
+
+  /**
    * 전체 기간 백테스팅
-   * @param historicalData - 과거 시장 데이터
-   * @param modesByDate - 날짜별 RSI 기반 모드 맵 (optional)
+   * @param historicalData - 과거 시장 데이터 (오름차순 정렬)
+   * @param modesByDate - 날짜별 RSI 기반 모드 맵 (auto 모드일 때 사용)
    */
   public backtest(
     historicalData: MarketData[],
     modesByDate?: Map<string, DivisionEngineMode>
   ): DailyTradeRecord[] {
-    if (!historicalData || historicalData.length === 0) {
-      return [];
+    if (!historicalData || historicalData.length === 0) return [];
+
+    if (this.config.hybrid) {
+      return this.backtestHybrid(historicalData, modesByDate);
     }
 
     const records: DailyTradeRecord[] = [];
@@ -653,7 +585,8 @@ export class DivisionEngine {
 
     historicalData.forEach((dayData, index) => {
       this.syncModeForDate(dayData.date, modesByDate);
-      const prevClose = index > 0 ? historicalData[index - 1].price : dayData.price;
+      // 첫날은 prevClose 없음 → 매수 안 함
+      const prevClose = index > 0 ? historicalData[index - 1].price : null;
 
       const record = this.processDailyTrade(
         dayData.date,
@@ -666,6 +599,135 @@ export class DivisionEngine {
       records.push(record);
       divisions = record.divisionPortfolios;
     });
+
+    return records;
+  }
+
+  /**
+   * 하이브리드 백테스팅 (B&H + 동파법)
+   *
+   * 전략 전환 규칙 (비대칭 필터):
+   *   동파→B&H: RSI aggressive/bull AND 가격>SMA50 AND 마지막전환 >=10 거래일
+   *   B&H→동파: RSI safe/cash → 즉시
+   */
+  private backtestHybrid(
+    historicalData: MarketData[],
+    modesByDate?: Map<string, DivisionEngineMode>
+  ): DailyTradeRecord[] {
+    const SMA_PERIOD = 50;
+    const MIN_HOLD_ENTRY = 10; // B&H 진입 최소 대기 거래일
+
+    const smaMap = this.computeSMA(historicalData, SMA_PERIOD);
+    const records: DailyTradeRecord[] = [];
+
+    type StratMode = 'bnh' | 'dongpa';
+    let stratMode: StratMode = 'dongpa';
+    let bnhShares = 0;
+    let bnhFreeCash = 0;
+    let daysSinceSwitch = 999; // 충분히 커서 초기엔 진입 허용
+
+    let divisions = this.initializeDivisions();
+    let dpStep = 0; // 동파법 스텝 카운터
+
+    for (let i = 0; i < historicalData.length; i++) {
+      const dayData = historicalData[i];
+      const prevClose = i > 0 ? historicalData[i - 1].price : null;
+
+      this.syncModeForDate(dayData.date, modesByDate);
+      const rsiMode = this.activeMode; // safe | aggressive | bull | cash
+
+      daysSinceSwitch++;
+
+      // 전략 모드 결정
+      const wantBnh = rsiMode === 'aggressive' || rsiMode === 'bull';
+      let desiredStrat: StratMode = wantBnh ? 'bnh' : 'dongpa';
+
+      // B&H 진입 필터 (비대칭 — 진입만 엄격)
+      if (desiredStrat === 'bnh' && stratMode !== 'bnh') {
+        const lockOk = daysSinceSwitch >= MIN_HOLD_ENTRY;
+        const sma = smaMap.get(dayData.date);
+        const smaOk = !sma || dayData.price >= sma;
+        if (!lockOk || !smaOk) desiredStrat = stratMode; // 진입 차단
+      }
+      // B&H 탈출: 즉시 (비대칭 — 탈출은 빠르게)
+
+      const switched = desiredStrat !== stratMode;
+      if (switched) {
+        daysSinceSwitch = 0;
+
+        if (desiredStrat === 'bnh') {
+          // 동파→B&H: 분할 전액 청산 후 주식 매수
+          const dpCash = divisions.reduce(
+            (sum, div) => sum + div.cash + (div.status === 'HOLDING' ? div.holdings * dayData.price * (1 - getTotalFeeRate()) : 0),
+            0
+          );
+          const totalCash = dpCash;
+          const qty = Math.floor(totalCash / (dayData.price * (1 + getTotalFeeRate())));
+          bnhShares = qty;
+          bnhFreeCash = totalCash - qty * dayData.price * (1 + getTotalFeeRate());
+          divisions = this.initializeDivisions().map(d => ({ ...d, cash: 0 }));
+          dpStep = 0;
+        } else {
+          // B&H→동파: 주식 전량 매도 후 분할 초기화
+          const cash = bnhShares * dayData.price * (1 - getTotalFeeRate()) + bnhFreeCash;
+          bnhShares = 0;
+          bnhFreeCash = 0;
+          divisions = this.initializeDivisions().map((d, idx) => ({
+            ...d,
+            cash: cash / this.config.divisions
+          }));
+          dpStep = 0;
+        }
+        stratMode = desiredStrat;
+      }
+
+      let record: DailyTradeRecord;
+
+      if (stratMode === 'bnh') {
+        const totalAssets = bnhShares * dayData.price + bnhFreeCash;
+        const returnRate = ((totalAssets - this.config.initialCapital) / this.config.initialCapital) * 100;
+        const changeRate = prevClose !== null ? ((dayData.price - prevClose) / prevClose) * 100 : 0;
+
+        record = {
+          date: dayData.date,
+          closePrice: dayData.price,
+          prevClosePrice: prevClose ?? dayData.price,
+          changeRate,
+          mode: rsiMode,
+          stratMode: 'bnh',
+          divisionActions: [],
+          divisionPortfolios: divisions,
+          totalBuyQuantity: switched ? bnhShares : 0,
+          totalSellQuantity: 0,
+          netQuantity: switched ? bnhShares : 0,
+          isNetted: false,
+          actualTradeQuantity: switched ? bnhShares : 0,
+          actualTradeType: switched ? 'BUY' : 'NONE',
+          savedCommission: 0,
+          dailyRealizedPL: 0,
+          totalCash: bnhFreeCash,
+          totalHoldings: bnhShares,
+          totalValue: bnhShares * dayData.price,
+          totalAssets,
+          returnRate,
+          isRebalanceDay: false
+        };
+      } else {
+        // 동파법 모드
+        record = this.processDailyTrade(
+          dayData.date,
+          dayData.price,
+          prevClose,
+          divisions,
+          dpStep
+        );
+        record = { ...record, stratMode: 'dongpa' };
+        divisions = record.divisionPortfolios;
+        dpStep++;
+      }
+
+      records.push(record);
+    }
 
     return records;
   }
@@ -684,28 +746,16 @@ export class DivisionEngine {
     divisions: DivisionPortfolio[];
   } {
     this.syncModeForDate(currentDate);
-    // 현재 상태 업데이트
-    const divisions = this.updateDivisionStatus(
-      currentDivisions,
-      todayClose,
-      currentDate
-    );
-
+    const divisions = this.updateDivisionStatus(currentDivisions, todayClose, currentDate);
     const buySignals: DivisionAction[] = [];
     const sellSignals: DivisionAction[] = [];
 
     divisions.forEach(div => {
-      // 매도 신호
       const sellSignal = this.checkSellSignal(div, todayClose, currentDate);
-      if (sellSignal) {
-        sellSignals.push(sellSignal);
-      }
+      if (sellSignal) sellSignals.push(sellSignal);
 
-      // 매수 신호
       const buySignal = this.checkBuySignal(div, todayClose, prevClose, currentDate);
-      if (buySignal) {
-        buySignals.push(buySignal);
-      }
+      if (buySignal) buySignals.push(buySignal);
     });
 
     return { buySignals, sellSignals, divisions };

@@ -14,13 +14,16 @@ import {
   Tag,
   Tooltip,
   Row,
-  Col
+  Col,
+  Collapse,
+  Switch
 } from 'antd';
 import {
   PlayCircleOutlined,
   ReloadOutlined,
   InfoCircleOutlined,
-  RocketOutlined
+  RocketOutlined,
+  SettingOutlined
 } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -37,6 +40,18 @@ export interface BacktestConfig {
   rebalancePeriod: number;
   startDate: string;
   endDate: string;
+  hybrid?: boolean; // B&H + 동파법 하이브리드 모드
+  // 고급 설정: 모드별 파라미터 커스텀 (미설정 시 기본값 사용)
+  customSafe?: {
+    sellTarget?: number;    // 0.001 ~ 0.05 (0.1% ~ 5%)
+    buyTarget?: number;     // 0.01 ~ 0.15 (1% ~ 15%)
+    holdingDays?: number;   // 5 ~ 60
+  };
+  customAggressive?: {
+    sellTarget?: number;
+    buyTarget?: number;
+    holdingDays?: number;
+  };
 }
 
 interface BacktestConfigPanelProps {
@@ -65,26 +80,26 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
     safe: {
       name: '안전모드',
       color: 'blue',
-      buyTarget: '3.0%',
-      sellTarget: '0.2%',
-      holdingDays: '30거래일',
-      description: '보수적 매매, 안정적 수익'
+      buyTarget: '-3.0%',
+      sellTarget: '2.0%',
+      holdingDays: '20거래일',
+      description: '3% 이상 하락일에 매수 → 2% 수익 시 매도'
     },
     aggressive: {
       name: '공세모드',
       color: 'red',
-      buyTarget: '5.0%',
-      sellTarget: '2.5%',
+      buyTarget: '-5.0%',
+      sellTarget: '8.0%',
       holdingDays: '7거래일',
-      description: '공격적 매매, 높은 수익률'
+      description: '5% 이상 하락일에 매수 → 8% 수익 시 매도'
     },
     auto: {
       name: 'RSI 자동모드',
       color: 'gold',
-      buyTarget: 'RSI 조건 (안전 3% / 공세 5%)',
-      sellTarget: 'RSI 조건 (0.2% / 2.5%)',
-      holdingDays: '안전 30일 / 공세 7일',
-      description: '매일 RSI 지표로 안전/공세 모드를 자동 전환'
+      buyTarget: 'RSI 조건 (안전 -3% / 공세 -5%)',
+      sellTarget: 'RSI 조건 (2.0% / 8.0%)',
+      holdingDays: '안전 20일 / 공세 7일',
+      description: 'Weekly RSI로 안전/공세 모드 자동 전환'
     }
   };
 
@@ -103,7 +118,18 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
       mode: values.mode,
       rebalancePeriod: values.rebalancePeriod,
       startDate: values.dateRange[0].format('YYYY-MM-DD'),
-      endDate: values.dateRange[1].format('YYYY-MM-DD')
+      endDate: values.dateRange[1].format('YYYY-MM-DD'),
+      hybrid: config.hybrid,
+      customSafe: {
+        sellTarget: values.safeSellTarget != null ? values.safeSellTarget / 100 : undefined,
+        buyTarget: values.safeBuyTarget != null ? values.safeBuyTarget / 100 : undefined,
+        holdingDays: values.safeHoldingDays ?? undefined,
+      },
+      customAggressive: {
+        sellTarget: values.aggrSellTarget != null ? values.aggrSellTarget / 100 : undefined,
+        buyTarget: values.aggrBuyTarget != null ? values.aggrBuyTarget / 100 : undefined,
+        holdingDays: values.aggrHoldingDays ?? undefined,
+      },
     };
     onConfigChange(newConfig);
     onRunBacktest();
@@ -115,7 +141,13 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
       divisions: 5,
       mode: 'auto',
       rebalancePeriod: 10,
-      dateRange: [dayjs().subtract(3, 'month'), dayjs()]
+      dateRange: [dayjs().subtract(3, 'month'), dayjs()],
+      safeSellTarget: null,
+      safeBuyTarget: null,
+      safeHoldingDays: null,
+      aggrSellTarget: null,
+      aggrBuyTarget: null,
+      aggrHoldingDays: null,
     });
   };
 
@@ -278,6 +310,29 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
               </Space>
             </div>
 
+            <Form.Item label={
+              <Space>
+                <span>하이브리드 전략</span>
+                <Tooltip title="RSI aggressive/bull 구간에서 B&H(전량 보유)로 전환, safe/cash 구간에서 동파법으로 복귀 (SMA50 진입 필터 + 10거래일 대기)">
+                  <InfoCircleOutlined style={{ color: '#888' }} />
+                </Tooltip>
+              </Space>
+            }>
+              <Space>
+                <Switch
+                  checked={config.hybrid ?? false}
+                  onChange={(checked) => onConfigChange({ ...config, hybrid: checked })}
+                  disabled={config.mode !== 'auto'}
+                />
+                <Text type={config.hybrid ? 'success' : 'secondary'} style={{ fontSize: 12 }}>
+                  {config.hybrid ? 'B&H + 동파법 활성화' : '동파법 단독 (기본)'}
+                </Text>
+                {config.mode !== 'auto' && (
+                  <Tag color="orange">RSI 자동모드에서만 사용 가능</Tag>
+                )}
+              </Space>
+            </Form.Item>
+
             <Form.Item
               label="백테스팅 기간"
               name="dateRange"
@@ -292,6 +347,100 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
             </Form.Item>
           </Col>
         </Row>
+
+        {/* 고급 설정 */}
+        <Collapse
+          ghost
+          items={[{
+            key: 'advanced',
+            label: (
+              <Space>
+                <SettingOutlined />
+                <span>고급 설정 (파라미터 커스텀)</span>
+                <Tag color="orange">선택사항</Tag>
+              </Space>
+            ),
+            children: (
+              <>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16, fontSize: 12 }}>
+                  비워두면 기본값 사용. 매도/매수 임계값을 조절해 최적 파라미터를 찾으세요.
+                </Text>
+                <Row gutter={16}>
+                  <Col xs={24} md={12}>
+                    <Title level={5} style={{ color: '#1890ff' }}>🛡️ 안전모드 커스텀</Title>
+                    <Row gutter={8}>
+                      <Col span={8}>
+                        <Form.Item label="매도 목표(%)" name="safeSellTarget">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0.1} max={10} step={0.1}
+                            placeholder="0.2"
+                            addonAfter="%"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="매수 임계(%)" name="safeBuyTarget">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0.5} max={15} step={0.5}
+                            placeholder="3.0"
+                            addonAfter="%"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="최대 보유일" name="safeHoldingDays">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={3} max={90} step={1}
+                            placeholder="30"
+                            addonAfter="일"
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Title level={5} style={{ color: '#ff4d4f' }}>⚡ 공세모드 커스텀</Title>
+                    <Row gutter={8}>
+                      <Col span={8}>
+                        <Form.Item label="매도 목표(%)" name="aggrSellTarget">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0.1} max={15} step={0.1}
+                            placeholder="2.5"
+                            addonAfter="%"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="매수 임계(%)" name="aggrBuyTarget">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={0.5} max={20} step={0.5}
+                            placeholder="5.0"
+                            addonAfter="%"
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="최대 보유일" name="aggrHoldingDays">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={2} max={60} step={1}
+                            placeholder="7"
+                            addonAfter="일"
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+              </>
+            )
+          }]}
+        />
 
         {/* 실행 버튼 */}
         <Divider />

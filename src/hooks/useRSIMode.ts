@@ -15,7 +15,7 @@ interface UseRSIModeProps {
 }
 
 interface RSIModeResult {
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash';
   rsi: number | null;
   prevRSI: number | null;
   reason: string;
@@ -74,7 +74,7 @@ export function useRSIMode({
   const latestModeResult = useMemo(() => {
     if (!enabled || marketData.length === 0) {
       return {
-        mode: 'safe' as const,
+        mode: 'safe' as 'safe' | 'aggressive' | 'bull' | 'cash',
         reason: 'RSI 데이터 없음 - 기본 안전모드',
         rsi: null,
         prevRSI: null,
@@ -98,7 +98,7 @@ export function useRSIMode({
     } catch (err) {
       console.error('주간 RSI 모드 결정 오류:', err);
       return {
-        mode: 'safe' as const,
+        mode: 'safe' as 'safe' | 'aggressive' | 'bull' | 'cash',
         reason: '오류 발생 - 기본 안전모드',
         rsi: null,
         prevRSI: null,

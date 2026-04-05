@@ -34,9 +34,9 @@ describe('divisionStateCalculator', () => {
     it('should use default config when no parameters provided', () => {
       const states = createInitialDivisionStates();
 
-      expect(states).toHaveLength(5); // DEFAULT_CONFIG.divisions
+      expect(states).toHaveLength(7); // DEFAULT_CONFIG.divisions
       states.forEach(state => {
-        expect(state.cash).toBe(2000); // 10000 / 5
+        expect(state.cash).toBeCloseTo(10000 / 7, 5);
       });
     });
   });

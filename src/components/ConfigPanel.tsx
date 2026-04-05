@@ -42,23 +42,23 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
     safe: {
       name: '안전모드',
       color: 'blue',
-      description: '3% 하락시 매수, 0.2% 수익시 매도',
+      description: '3% 하락시 매수, +2% 수익시 매도 (최대 20거래일)',
       risk: '중간',
-      expectedReturn: '연 15-25%',
+      condition: 'RSI 하락 중 / 50선 하향 / 과매수(>65)',
     },
     aggressive: {
       name: '공세모드',
       color: 'red',
-      description: '5% 하락시 매수, 2.5% 수익시 매도',
+      description: '5% 하락시 매수, +8% 수익시 매도 (최대 7거래일)',
       risk: '높음',
-      expectedReturn: '연 30-50%',
+      condition: 'RSI 상승 중 / 50선 상향 돌파',
     },
     auto: {
       name: '자동모드',
       color: 'purple',
-      description: 'RSI 기반 자동 전환',
+      description: 'RSI 기반 4단계 자동 전환 (안전/공세/강세/현금)',
       risk: '변동',
-      expectedReturn: '시장 대응',
+      condition: 'RSI 주간 추세로 모드 자동 결정',
     }
   };
 
@@ -164,7 +164,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                   </div>
                   <div style={{ marginTop: 2 }}>
                     <Text style={{ fontSize: '12px', color: '#52c41a' }}>
-                      예상수익: {modeInfo.safe.expectedReturn}
+                      적용 조건: {modeInfo.safe.condition}
                     </Text>
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                   </div>
                   <div style={{ marginTop: 2 }}>
                     <Text style={{ fontSize: '12px', color: '#f5222d' }}>
-                      예상수익: {modeInfo.aggressive.expectedReturn}
+                      적용 조건: {modeInfo.aggressive.condition}
                     </Text>
                   </div>
                 </div>
@@ -197,12 +197,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                   </Space>
                   <div style={{ marginTop: 4 }}>
                     <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                      RSI 지표에 따라 안전모드 ↔ 공세모드 자동 전환
+                      {modeInfo.auto.description}
                     </Text>
                   </div>
                   <div style={{ marginTop: 2 }}>
                     <Text style={{ fontSize: '12px', color: '#722ed1' }}>
-                      시장 상황에 맞춰 자동 대응
+                      적용 조건: {modeInfo.auto.condition}
                     </Text>
                   </div>
                 </div>

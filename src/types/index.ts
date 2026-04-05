@@ -13,7 +13,7 @@ export interface DivisionState {
   avgPrice: number;
   buyDate: string | null;
   status: 'EMPTY' | 'HOLDING';
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash';
 }
 
 // 분할별 포트폴리오 상태
@@ -191,7 +191,8 @@ export interface DailyTradeRecord {
   closePrice: number;
   prevClosePrice: number;
   changeRate: number;
-  mode: 'safe' | 'aggressive'; // 해당 날짜의 매매 모드 (RSI 기반)
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash'; // 해당 날짜의 매매 모드 (RSI 기반)
+  stratMode?: 'bnh' | 'dongpa';                  // 하이브리드 전략 모드 (B&H / 동파법)
 
   // 분할별 액션
   divisionActions: DivisionAction[];

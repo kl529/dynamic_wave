@@ -10,13 +10,13 @@ interface DivisionPortfolio {
   avgPrice: number;
   buyDate: string | null;
   status: 'EMPTY' | 'HOLDING';
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull';
 }
 
 interface DivisionStatusPanelProps {
   divisionPortfolios: DivisionPortfolio[];
   todayClose: number;
-  mode: 'safe' | 'aggressive' | 'auto';
+  mode: 'safe' | 'aggressive' | 'bull' | 'auto';
 }
 
 export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
@@ -64,11 +64,14 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
       title: '매수 모드',
       dataIndex: 'mode',
       key: 'mode',
-      render: (mode: 'safe' | 'aggressive' | undefined, record: any) => {
+      render: (mode: 'safe' | 'aggressive' | 'bull' | undefined, record: any) => {
         if (record.status !== 'HOLDING') return '-';
-        const buyMode = mode || 'safe'; // 기본값
+        const buyMode = mode || 'safe';
+        if (buyMode === 'bull') {
+          return <Tag icon={<ThunderboltOutlined />} color="success">강세</Tag>;
+        }
         return (
-          <Tag 
+          <Tag
             icon={buyMode === 'safe' ? <SafetyOutlined /> : <ThunderboltOutlined />}
             color={buyMode === 'safe' ? 'success' : 'error'}
           >
@@ -94,12 +97,12 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
           (Date.now() - new Date(record.buyDate).getTime()) / (1000 * 60 * 60 * 24)
         );
         const buyMode = record.mode || 'safe';
-        const maxDays = buyMode === 'aggressive' ? 7 : 30;
+        const maxDays = buyMode === 'aggressive' ? 7 : buyMode === 'bull' ? 45 : 20;
         const percentage = (holdingDays / maxDays) * 100;
         const color = percentage > 80 ? 'red' : percentage > 50 ? 'orange' : 'green';
 
         return (
-          <Tooltip title={`최대 ${maxDays}일 (${buyMode === 'safe' ? '안전' : '공세'}모드)`}>
+          <Tooltip title={`최대 ${maxDays}일 (${buyMode === 'safe' ? '안전' : buyMode === 'bull' ? '강세' : '공세'}모드)`}>
             <div>
               <div>{holdingDays}일 / {maxDays}일</div>
               <Progress
@@ -121,14 +124,14 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
       render: (_: any, record: any) => {
         if (record.status !== 'HOLDING') return '-';
         const buyMode = record.mode || 'safe';
-        const targetRate = buyMode === 'safe' ? 0.2 : 2.5;
-        const currentRate = record.holdings > 0 
-          ? ((todayClose - record.avgPrice) / record.avgPrice) * 100 
+        const targetRate = buyMode === 'aggressive' ? 8.0 : buyMode === 'bull' ? 12.0 : 2.0;
+        const currentRate = record.holdings > 0
+          ? ((todayClose - record.avgPrice) / record.avgPrice) * 100
           : 0;
         const achieved = currentRate >= targetRate;
-        
+
         return (
-          <Tooltip title={`${buyMode === 'safe' ? '안전' : '공세'}모드 목표`}>
+          <Tooltip title={`${buyMode === 'safe' ? '안전' : buyMode === 'bull' ? '강세' : '공세'}모드 목표`}>
             <Tag color={achieved ? 'green' : 'orange'}>
               {achieved ? '✓ ' : ''}{targetRate}%
             </Tag>

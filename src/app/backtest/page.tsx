@@ -1,8 +1,10 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Layout, Card, Space, Button, message, Alert } from 'antd';
-import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
+import { Layout, Card, Space, Button, message, Alert, Table, Tag, Typography } from 'antd';
+import { ArrowLeftOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
 import { useRouter } from 'next/navigation';
 import { BacktestConfigPanel, type BacktestConfig } from '@/components/BacktestConfigPanel';
 import { BacktestResultsChart } from '@/components/BacktestResultsChart';
@@ -12,9 +14,21 @@ import { DivisionEngine } from '@/services/divisionEngine';
 import { MarketDataService } from '@/services/marketDataService';
 import { enrichDataWithWeeklyRSIMode } from '@/utils/rsiCalculator';
 import { DEFAULT_CONFIG, TIMING, BACKTEST } from '@/constants';
-import type { DailyTradeRecord, MarketData } from '@/types';
+import type { DailyTradeRecord, MarketData, ModeConfig } from '@/types';
 
 const { Content } = Layout;
+
+interface SweepResult {
+  label: string;
+  safeSellTarget: number;
+  aggrSellTarget: number;
+  returnRate: number;
+  annualizedReturn: number;
+  maxDrawdown: number;
+  winRate: number;
+  tradeCount: number;
+  finalAssets: number;
+}
 
 export default function BacktestPage() {
   const router = useRouter();
@@ -29,6 +43,8 @@ export default function BacktestPage() {
   });
   const [backtestResults, setBacktestResults] = useState<DailyTradeRecord[]>([]);
   const [hasRunBacktest, setHasRunBacktest] = useState(false);
+  const [sweepResults, setSweepResults] = useState<SweepResult[]>([]);
+  const [sweepLoading, setSweepLoading] = useState(false);
 
   const handleConfigChange = (newConfig: BacktestConfig) => {
     setConfig(newConfig);
@@ -42,12 +58,31 @@ export default function BacktestPage() {
       message.loading({ content: '백테스팅 실행 중...', key: 'backtest', duration: 0 });
 
       // 백테스팅 엔진 초기화
-      const engine = new DivisionEngine({
-        initialCapital: config.initialCapital,
-        divisions: config.divisions,
-        mode: config.mode,
-        rebalancePeriod: config.rebalancePeriod
-      });
+      const customModeConfigs: Partial<Record<'safe' | 'aggressive', Partial<ModeConfig>>> = {};
+      if (config.customSafe && Object.values(config.customSafe).some(v => v != null)) {
+        customModeConfigs.safe = {
+          ...(config.customSafe.sellTarget != null && { sellTarget: config.customSafe.sellTarget }),
+          ...(config.customSafe.buyTarget != null && { buyTarget: config.customSafe.buyTarget }),
+          ...(config.customSafe.holdingDays != null && { holdingDays: config.customSafe.holdingDays }),
+        };
+      }
+      if (config.customAggressive && Object.values(config.customAggressive).some(v => v != null)) {
+        customModeConfigs.aggressive = {
+          ...(config.customAggressive.sellTarget != null && { sellTarget: config.customAggressive.sellTarget }),
+          ...(config.customAggressive.buyTarget != null && { buyTarget: config.customAggressive.buyTarget }),
+          ...(config.customAggressive.holdingDays != null && { holdingDays: config.customAggressive.holdingDays }),
+        };
+      }
+      const engine = new DivisionEngine(
+        {
+          initialCapital: config.initialCapital,
+          divisions: config.divisions,
+          mode: config.mode,
+          rebalancePeriod: config.rebalancePeriod,
+          hybrid: config.hybrid && config.mode === 'auto' ? true : undefined
+        },
+        Object.keys(customModeConfigs).length > 0 ? customModeConfigs : undefined
+      );
 
       const marketData = await fetchHistoricalMarketData(
         config.startDate,
@@ -60,7 +95,7 @@ export default function BacktestPage() {
 
       // 주간 RSI 기반 모드 계산
       const dataWithMode = enrichDataWithWeeklyRSIMode(marketData);
-      const modesByDate = new Map<string, 'safe' | 'aggressive'>();
+      const modesByDate = new Map<string, 'safe' | 'aggressive' | 'bull' | 'cash'>();
       dataWithMode.forEach(day => {
         if (day.mode) {
           modesByDate.set(day.date, day.mode);
@@ -82,6 +117,77 @@ export default function BacktestPage() {
       message.error({ content: `백테스팅 실패: ${error.message}`, key: 'backtest', duration: 3 });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleParameterSweep = async () => {
+    setSweepLoading(true);
+    setSweepResults([]);
+    try {
+      message.loading({ content: '파라미터 스윕 실행 중...', key: 'sweep', duration: 0 });
+
+      const marketData = await fetchHistoricalMarketData(config.startDate, config.endDate);
+      if (!marketData.length) throw new Error('시장 데이터 없음');
+
+      const dataWithMode = enrichDataWithWeeklyRSIMode(marketData);
+      const modesByDate = new Map<string, 'safe' | 'aggressive' | 'bull' | 'cash'>();
+      dataWithMode.forEach(day => { if (day.mode) modesByDate.set(day.date, day.mode); });
+
+      const days = marketData.length;
+      const years = days / 252;
+
+      // 스윕 조합: 안전 매도 0.2/0.5/1.0/1.5/2.0% × 공세 매도 1.5/2.5/3.5%
+      const safeSellTargets = [0.002, 0.005, 0.010, 0.015, 0.020];
+      const aggrSellTargets = [0.015, 0.025, 0.035];
+      const results: SweepResult[] = [];
+
+      for (const safeSell of safeSellTargets) {
+        for (const aggrSell of aggrSellTargets) {
+          const eng = new DivisionEngine(
+            { initialCapital: config.initialCapital, divisions: config.divisions, mode: config.mode, rebalancePeriod: config.rebalancePeriod },
+            { safe: { sellTarget: safeSell }, aggressive: { sellTarget: aggrSell } }
+          );
+          const records = eng.backtest(marketData, config.mode === 'auto' ? modesByDate : undefined);
+          if (!records.length) continue;
+
+          const finalAssets = records[records.length - 1].totalAssets;
+          const returnRate = ((finalAssets - config.initialCapital) / config.initialCapital) * 100;
+          const annualizedReturn = years > 0 ? (Math.pow(finalAssets / config.initialCapital, 1 / years) - 1) * 100 : 0;
+
+          let peak = config.initialCapital;
+          let maxDrawdown = 0;
+          records.forEach(r => {
+            if (r.totalAssets > peak) peak = r.totalAssets;
+            const dd = (peak - r.totalAssets) / peak * 100;
+            if (dd > maxDrawdown) maxDrawdown = dd;
+          });
+
+          const allActions = records.flatMap(r => r.divisionActions);
+          const sells = allActions.filter(a => a.action === 'SELL');
+          const wins = sells.filter(a => (a.profit || 0) > 0);
+          const winRate = sells.length > 0 ? (wins.length / sells.length) * 100 : 0;
+
+          results.push({
+            label: `안전 ${(safeSell * 100).toFixed(1)}% / 공세 ${(aggrSell * 100).toFixed(1)}%`,
+            safeSellTarget: safeSell * 100,
+            aggrSellTarget: aggrSell * 100,
+            returnRate,
+            annualizedReturn,
+            maxDrawdown,
+            winRate,
+            tradeCount: allActions.length,
+            finalAssets,
+          });
+        }
+      }
+
+      results.sort((a, b) => b.returnRate - a.returnRate);
+      setSweepResults(results);
+      message.success({ content: `파라미터 스윕 완료! ${results.length}개 조합 분석`, key: 'sweep', duration: 2 });
+    } catch (err: any) {
+      message.error({ content: `스윕 실패: ${err.message}`, key: 'sweep', duration: 3 });
+    } finally {
+      setSweepLoading(false);
     }
   };
 
@@ -188,6 +294,22 @@ export default function BacktestPage() {
             />
           )}
 
+          {/* RSI Auto 모드 데이터 부족 경고 */}
+          {config.mode === 'auto' && (() => {
+            const start = new Date(config.startDate);
+            const end = new Date(config.endDate);
+            const daysDiff = Math.floor((end.getTime() - start.getTime()) / 86400000);
+            return daysDiff < 98; // 14주(주간 RSI 계산 최소 필요 기간)
+          })() && (
+            <Alert
+              message="RSI Auto 모드: 데이터 부족 경고"
+              description="주간 RSI 계산에는 최소 14주(약 98일) 데이터가 필요합니다. 현재 기간이 짧아 RSI 초기값이 없는 구간에서는 기본값(안전모드)으로 동작합니다. 정확한 RSI 기반 모드 전환을 원하면 기간을 3개월 이상으로 설정하세요."
+              type="warning"
+              showIcon
+              style={{ marginBottom: 24 }}
+            />
+          )}
+
           {/* 설정 패널 */}
           <BacktestConfigPanel
             config={config}
@@ -195,6 +317,104 @@ export default function BacktestPage() {
             onRunBacktest={handleRunBacktest}
             loading={loading}
           />
+
+          {/* 파라미터 스윕 */}
+          <Card
+            style={{ marginTop: 24 }}
+            title={
+              <Space>
+                <ThunderboltOutlined style={{ color: '#faad14' }} />
+                <span>파라미터 최적화 스윕</span>
+                <Tag color="gold">자동 최적화</Tag>
+              </Space>
+            }
+            extra={
+              <Button
+                type="primary"
+                icon={<ThunderboltOutlined />}
+                loading={sweepLoading}
+                onClick={handleParameterSweep}
+                style={{ background: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)', border: 'none' }}
+              >
+                {sweepLoading ? '스윕 실행 중...' : '최적 파라미터 찾기'}
+              </Button>
+            }
+          >
+            <Alert
+              message="매도 임계값 자동 탐색"
+              description="안전모드 매도 목표(0.2%/0.5%/1.0%/1.5%/2.0%) × 공세모드 매도 목표(1.5%/2.5%/3.5%) — 15가지 조합을 자동으로 백테스팅하고 수익률 순으로 정렬합니다. 설정 패널의 기간·자본·분할수·재분할 주기를 그대로 사용합니다."
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            {sweepResults.length > 0 && (
+              <Table
+                dataSource={sweepResults}
+                rowKey="label"
+                size="small"
+                pagination={false}
+                rowClassName={(_, index) => index === 0 ? 'sweep-best-row' : ''}
+                columns={[
+                  {
+                    title: '순위',
+                    render: (_: any, __: any, index: number) => (
+                      <span style={{ fontWeight: index === 0 ? 'bold' : 'normal', color: index === 0 ? '#52c41a' : undefined }}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`}
+                      </span>
+                    ),
+                    width: 60,
+                  },
+                  {
+                    title: '파라미터',
+                    dataIndex: 'label',
+                    render: (label: string, _: any, index: number) => (
+                      <Text strong={index === 0}>{label}</Text>
+                    ),
+                  },
+                  {
+                    title: '수익률',
+                    dataIndex: 'returnRate',
+                    sorter: (a: SweepResult, b: SweepResult) => a.returnRate - b.returnRate,
+                    render: (v: number) => (
+                      <span style={{ color: v >= 0 ? '#52c41a' : '#ff4d4f', fontWeight: 'bold' }}>
+                        {v >= 0 ? '+' : ''}{v.toFixed(2)}%
+                      </span>
+                    ),
+                  },
+                  {
+                    title: '연환산',
+                    dataIndex: 'annualizedReturn',
+                    render: (v: number) => (
+                      <span style={{ color: v >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                        {v >= 0 ? '+' : ''}{v.toFixed(1)}%/년
+                      </span>
+                    ),
+                  },
+                  {
+                    title: 'MDD',
+                    dataIndex: 'maxDrawdown',
+                    render: (v: number) => <span style={{ color: '#ff4d4f' }}>-{v.toFixed(1)}%</span>,
+                  },
+                  {
+                    title: '승률',
+                    dataIndex: 'winRate',
+                    render: (v: number) => (
+                      <span style={{ color: v >= 50 ? '#52c41a' : '#ff7a45' }}>{v.toFixed(1)}%</span>
+                    ),
+                  },
+                  {
+                    title: '매매횟수',
+                    dataIndex: 'tradeCount',
+                  },
+                  {
+                    title: '최종자산',
+                    dataIndex: 'finalAssets',
+                    render: (v: number) => `$${v.toFixed(0)}`,
+                  },
+                ]}
+              />
+            )}
+          </Card>
 
           {/* 결과 표시 */}
           {hasRunBacktest && backtestResults.length > 0 && (

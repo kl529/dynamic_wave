@@ -83,8 +83,8 @@ export const BacktestDebugTable: React.FC<BacktestDebugTableProps> = ({
           (a.action === 'SELL' || a.action === 'STOP_LOSS')
       );
 
-      // 모드별 설정
-      const modeConfig = getModeConfig(trade.mode);
+      // 모드별 설정 (cash 모드는 safe 설정 사용)
+      const modeConfig = getModeConfig(trade.mode === 'cash' ? 'safe' : trade.mode);
 
       // 가용자금 (현금)
       const 가용자금 = division.cash;
