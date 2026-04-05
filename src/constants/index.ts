@@ -6,9 +6,10 @@
 import { DongpaConfig } from '@/types';
 
 // ===== 기본 설정 =====
+// [2026-04-04 최적화 v3] 분할수 5→10, 재분할주기 20→10 (하락/폭락/보합장 특화 그리드서치 결과)
 export const DEFAULT_CONFIG: DongpaConfig = {
   initialCapital: 10000,
-  divisions: 5,
+  divisions: 10,
   mode: 'auto',
   rebalancePeriod: 10
 };
@@ -17,21 +18,30 @@ export const DEFAULT_CONFIG: DongpaConfig = {
 export const TRADING = {
   // 최소 거래 가능 현금
   MIN_CASH_FOR_TRADE: 100,
-  
+
   // 안전모드 설정
+  // [2026-04-04 최적화 v3.1]
   SAFE: {
-    BUY_TARGET: -0.03,      // -3% 하락 시 매수
-    SELL_TARGET: 0.002,     // +0.2% 수익 시 매도
-    HOLDING_DAYS: 30,       // 최대 30 거래일 보유
+    BUY_TARGET: -0.03,      // 변동률 < -3% 이면 매수
+    SELL_TARGET: 0.02,      // +2% 수익 시 매도
+    HOLDING_DAYS: 20,       // 최대 20 거래일 보유
   },
-  
+
   // 공세모드 설정
+  // [2026-04-04 최적화 v3.1]
   AGGRESSIVE: {
-    BUY_TARGET: -0.05,      // -5% 하락 시 매수
-    SELL_TARGET: 0.025,     // +2.5% 수익 시 매도
+    BUY_TARGET: -0.05,      // 변동률 < -5% 이면 매수
+    SELL_TARGET: 0.08,      // +8% 수익 시 매도
     HOLDING_DAYS: 7,        // 최대 7 거래일 보유
   },
-  
+
+  // 강세모드 설정
+  BULL: {
+    BUY_TARGET: -0.03,      // 변동률 < -3% 이면 매수
+    SELL_TARGET: 0.12,      // +12% 수익 시 매도
+    HOLDING_DAYS: 45,       // 최대 45 거래일 보유
+  },
+
   // 복리 설정
   PROFIT_REINVEST: 0.8,     // 이익 복리 80%
   LOSS_REINVEST: 0.3,       // 손실 복리 30%

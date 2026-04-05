@@ -1,4 +1,4 @@
-# 🚀 동파법 SOXL 자동매매 시스템
+# 동파법 SOXL 자동매매 시스템
 
 **5분할 독립 운영 × RSI 자동 모드 전환 × 백테스팅**
 
@@ -7,184 +7,108 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.0-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Ant Design](https://img.shields.io/badge/Ant_Design-5.0-0170FE?logo=ant-design)](https://ant.design/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
-![동파법 시스템](https://via.placeholder.com/800x400/4F46E5/FFFFFF?text=Dongpa+Trading+System)
-
-## ✨ 주요 기능
-
-### 🎯 핵심 기능
-- **5분할 독립 운영**: 각 분할이 개별 포트폴리오로 독립 관리
-- **RSI 자동 모드 전환**: 14일/14주 RSI로 안전↔공세 모드 자동 전환
-- **실시간 매매 신호**: 오늘 실행할 매수/매도 주문 즉시 확인
-- **종가 기준 매매**: Yahoo Finance/Alpha Vantage 실시간 데이터
-
-### 📊 분석 기능
-- **백테스팅**: 과거 데이터 기반 전략 성과 검증 (수익률, MDD, 승률)
-- **상세 디버깅**: 분할별 일별 거래 내역 CSV 다운로드
-- **RSI 시각화**: 모드 전환 시점 및 RSI 추이 차트
-
-### 🛠️ 기타 기능
-- **매매 기록 관리**: 수동 거래 내역 입력/저장 (localStorage)
-- **모바일 최적화**: 반응형 디자인
-- **PWA 지원**: 홈 화면 추가 가능
-
-## 🎯 동파법 전략 요약
-
-### 📌 기본 설정
-- **종목**: SOXL (반도체 3배 레버리지 ETF)
-- **분할**: 5분할 고정 (각 분할이 독립 운영)
-- **매매 기준**: 종가(Close Price)
-- **모드 전환**: RSI 기반 자동 (14일/14주 RSI)
-
-### 🟢 안전모드 (Safe Mode)
-```
-매수: 전일 대비 변동률 < +3.0% (3% 미만 상승 or 하락)
-매도: +0.2% 수익 또는 30거래일 경과 시
-RSI: 50 아래 하락, 65 이상→하락, 40-50 구간 하락
-```
-
-### 🔴 공세모드 (Aggressive Mode)
-```
-매수: 전일 대비 변동률 < +5.0% (5% 미만 상승 or 하락)
-매도: +2.5% 수익 또는 7거래일 경과 시
-RSI: 50 위로 상승, 35 이하→상승, 30-60 구간 상승
-```
-
-### 🔄 5분할 독립 운영 예시
-```
-분할1: 보유 68주 @ $29.10 (5일 차) → 매도 조건 충족 시 전량 매도
-분할2: 보유 70주 @ $28.20 (3일 차) → 독립 관리
-분할3: 현금 $2,000 (비어있음) → 매수 신호 시 매수
-분할4: 현금 $2,000 (비어있음) → 대기
-분할5: 보유 65주 @ $30.50 (1일 차) → 독립 관리
-```
-
-**📖 자세한 전략은 [GUIDE.md](./GUIDE.md)를 참조하세요.**
-
-## 🚀 빠른 시작
-
-### 설치 및 실행
-
-```bash
-# 저장소 클론
-git clone https://github.com/your-username/dongpa.git
-cd dongpa
-
-# 의존성 설치
-npm install
-
-# 개발 서버 실행 (http://localhost:3000)
-npm run dev
-
-# 프로덕션 빌드
-npm run build
-npm start
-```
-
-### Vercel 배포
-
-```bash
-# Vercel CLI 설치
-npm i -g vercel
-
-# 배포
-vercel
-
-# 프로덕션 배포
-vercel --prod
-```
-
-또는 GitHub와 Vercel 연동으로 자동 배포:
-1. GitHub에 Push
-2. [Vercel](https://vercel.com)에서 GitHub 연동
-3. 자동 배포 완료!
-
-## 💻 기술 스택
-
-| 분류 | 기술 |
-|------|------|
-| **Framework** | Next.js 14 (App Router) |
-| **Language** | TypeScript |
-| **UI** | Ant Design + Tailwind CSS |
-| **Charts** | Recharts |
-| **State** | React Hooks |
-| **Database** | Supabase (PostgreSQL) |
-| **Storage** | localStorage |
-| **Data** | Yahoo Finance API / Alpha Vantage API |
-
-**📖 자세한 아키텍처는 [GUIDE.md](./GUIDE.md#️-시스템-아키텍처)를 참조하세요.**
-
-## 📱 화면별 기능
-
-| 탭 | 주요 기능 |
-|---|-----------|
-| **오늘 매매 신호** | • 오늘 요일 & 분할 현황<br>• 5분할 대시보드 (보유량/평단가/수익률)<br>• 오늘 실행할 매수/매도 주문 |
-| **백테스팅** | • 과거 데이터 성과 분석<br>• RSI 자동 모드 적용<br>• 차트 & 통계 (수익률/MDD/승률)<br>• CSV 다운로드 |
-| **매매 기록** | • 수동 거래 내역 입력<br>• 날짜/분할/타입/수량/가격/메모<br>• 목록 조회 및 삭제 |
-| **설정** | • 초기 투자금 설정<br>• 모드 선택 (안전/공세/자동)<br>• 거래 가이드 |
-
-**📖 자세한 사용법은 [GUIDE.md](./GUIDE.md#-사용-가이드)를 참조하세요.**
-
-## 📁 프로젝트 구조
-
-```
-dongpa/
-├── src/
-│   ├── app/                      # Next.js App Router
-│   │   ├── page.tsx              # 메인 (오늘 매매 신호)
-│   │   └── backtest/page.tsx     # 백테스팅
-│   ├── components/               # UI 컴포넌트
-│   ├── services/                 # ⭐ 핵심 로직
-│   │   ├── divisionEngine.ts     # 5분할 독립 운영
-│   │   ├── dongpaEngine.ts       # 동파법 계산
-│   │   └── marketDataService.ts  # 시장 데이터
-│   ├── utils/
-│   │   └── rsiCalculator.ts      # ⭐ RSI 계산
-│   └── types/index.ts            # 타입 정의
-├── public/                       # 정적 파일
-├── GUIDE.md                      # 📖 완전한 가이드
-└── README.md                     # 이 파일
-```
-
-**📖 자세한 구조는 [GUIDE.md](./GUIDE.md#️-시스템-아키텍처)를 참조하세요.**
-
-## 🛠️ 개발 스크립트
-
-```bash
-npm run dev          # 개발 서버 (http://localhost:3000)
-npm run build        # 프로덕션 빌드
-npm run start        # 프로덕션 서버
-npm run lint         # ESLint 검사
-```
-
-**개발자 가이드는 [GUIDE.md](./GUIDE.md#️-개발-가이드)를 참조하세요.**
-
-## 📚 문서
-
-| 문서 | 내용 |
-|------|------|
-| **[GUIDE.md](./GUIDE.md)** | 📖 완전한 가이드 (전략, 아키텍처, 사용법, 개발) |
-| **[README.md](./README.md)** | 프로젝트 소개 및 빠른 시작 |
-
-**모든 상세 정보는 [GUIDE.md](./GUIDE.md)에 통합되어 있습니다!**
-
-## 🚨 투자 유의사항
-
-⚠️ **중요한 경고**
-- 본 시스템은 **교육 및 분석 목적**으로만 제작됨
-- 실제 투자 결정은 개인의 책임
-- SOXL은 3배 레버리지 ETF로 **높은 변동성과 리스크**
-- 투자 원금의 전부 또는 일부 손실 가능
-- **과거 백테스팅 결과가 미래 수익을 보장하지 않음**
-
-## 📝 라이센스
-
-MIT License
 
 ---
 
-**📖 전체 문서**: [GUIDE.md](./GUIDE.md)
-**💬 문의**: GitHub Issues
+## 현재 전략 파라미터 (v3 — 2026-04-04 기준)
 
-⚠️ **면책조항**: 이 소프트웨어는 교육 목적으로만 제공됩니다. 실제 투자에 대한 어떠한 보장도 하지 않으며, 투자로 인한 손실에 대해 개발자는 책임지지 않습니다.
+| 항목 | 안전모드 | 공세모드 | bull모드 |
+|------|---------|---------|---------|
+| **매수 조건** | 전일 대비 **-3% 이상 하락일에만** | **-5% 이상 하락일에만** | **-3% 이상 하락일에만** |
+| **매도 목표** | 평단가 대비 **+0.8%** | **+10%** | **+10%** |
+| **최대 보유** | **30거래일** 후 강제 손절 | **10거래일** | **45거래일** |
+| 모드 전환 | Weekly RSI 기반 자동 전환 | ← | RSI 55~65 상승 구간 |
+| 기본 분할 수 | **5분할** (최적화 목표: 10분할) | ← | ← |
+| 재분할 주기 | **20거래일**마다 자산 균등 재분배 | ← | ← |
+| 수수료 | 편도 0.047% (거래세 0.044% + SEC 0.00278%) | ← | ← |
+
+> **권장 파라미터 (그리드 탐색 v3 결론)**: `div=10, rp=10` | safe `-4%/+0.8%/30일` | aggr `-5%/+10%/10일` | bull `-3%/+8%/45일`
+
+---
+
+## 실제 백테스팅 결과 요약
+
+### 연도별 (2010~2026, 4,041거래일)
+
+| 구간 | SOXL B&H | 동파법 | 초과수익 |
+|------|---------|--------|---------|
+| 2011 하락장 | -49% | -27.5% | **+21.9%p** |
+| 2018 하락장 | -44% | -10.1% | **+34.1%p** |
+| **2022 폭락장** | **-87%** | **-36.1%** | **+50.5%p** |
+| 2012 횡보장 | 0% | -18.6% | -18.6%p |
+| 2024 보합장 | -2.6% | -12.5% | -9.9%p |
+| 2023 강세장 | +235% | +2.5% | -232%p |
+
+**전략 포지셔닝**: B&H 대비 연간 -40% 이상 폭락 시에만 우위. 단독 수익 전략이 아닌 **폭락 방어 + 박스권 알파** 전략.
+
+> 상세 분석: [`docs/analysis-2026-04-04-v4.md`](./docs/analysis-2026-04-04-v4.md)
+
+---
+
+## 기능
+
+### 오늘 매매 신호 (메인 화면)
+- 5분할(~7분할) 현황 대시보드 (보유량 / 평단가 / 평가손익)
+- 오늘 실행할 매수/매도 주문 즉시 확인
+- RSI 모드 표시 (안전 / 공세)
+- 매매 기록 수동 입력 및 Supabase 저장
+
+### 백테스팅
+- 기간 / 분할 수 / 모드 / 재분할 주기 자유 설정
+- **고급 설정**: 매도 목표 % 직접 커스텀 (기본값 오버라이드)
+- **파라미터 스윕**: 15개 조합 자동 테스트 → 최적 파라미터 탐색
+- 핵심 지표: 수익률, 연환산(CAGR), MDD, 승률, **기대값(EV)**, 손절 비율
+- 분할별 성과 테이블 + CSV 다운로드
+
+---
+
+## 빠른 시작
+
+```bash
+npm install
+npm run dev   # http://localhost:3000
+```
+
+환경 변수 (`.env.local`):
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+> Supabase 설정 상세: [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md)
+
+---
+
+## 기술 스택
+
+| 분류 | 기술 |
+|------|------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| UI | Ant Design 5 + Tailwind CSS |
+| Charts | Recharts |
+| Database | Supabase (PostgreSQL) |
+| Data | Yahoo Finance API |
+
+---
+
+## 문서
+
+| 파일 | 내용 |
+|------|------|
+| [`GUIDE.md`](./GUIDE.md) | 전략 상세, 사용법, 아키텍처 |
+| [`docs/analysis-2026-04-04-v4.md`](./docs/analysis-2026-04-04-v4.md) | **2010~2026 전체 분석, 구조적 문제 진단, 개선 방향** |
+| [`docs/how-money-is-made.md`](./docs/how-money-is-made.md) | 매수/매도 수식 완전 해부, 손익분기점 |
+| [`docs/backtest-report-2026-04-04.md`](./docs/backtest-report-2026-04-04.md) | v2 vs v3 비교 백테스팅 결과 |
+| [`docs/optimization-2026-04-04.md`](./docs/optimization-2026-04-04.md) | 파라미터 그리드 탐색 v1/v2 기록 |
+| [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) | 변경 이력 |
+| [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md) | Supabase 연결 설정, 테이블 생성 SQL |
+
+---
+
+## 투자 유의사항
+
+- 본 시스템은 **교육 및 분석 목적**으로만 제작됨
+- SOXL은 3배 레버리지 ETF — **원금 전액 손실 가능**
+- 과거 백테스팅 결과가 미래 수익을 보장하지 않음
+- 실제 투자 결정은 전적으로 개인의 책임

@@ -12,7 +12,7 @@ import {
 const { Text, Title } = Typography;
 
 interface RSIModeIndicatorProps {
-  mode: 'safe' | 'aggressive';
+  mode: 'safe' | 'aggressive' | 'bull' | 'cash';
   rsi: number | null;
   prevRSI: number | null;
   reason: string;
@@ -59,7 +59,7 @@ export const RSIModeIndicator: React.FC<RSIModeIndicatorProps> = ({
       name: '안전모드',
       color: 'blue',
       icon: '🛡️',
-      description: '3% 하락시 매수, 0.2% 수익시 매도',
+      description: '3% 하락시 매수, 0.5% 수익시 매도',
       risk: '중간',
       expectedReturn: '연 15-25%',
       bgColor: '#e6f7ff',
@@ -74,6 +74,26 @@ export const RSIModeIndicator: React.FC<RSIModeIndicatorProps> = ({
       expectedReturn: '연 30-50%',
       bgColor: '#fff1f0',
       borderColor: '#ff4d4f'
+    },
+    bull: {
+      name: '강세모드',
+      color: 'green',
+      icon: '🐂',
+      description: '2% 하락시 매수, 0.5% 수익시 매도 (RSI 상승 추세)',
+      risk: '중간-높음',
+      expectedReturn: '연 20-40%',
+      bgColor: '#f6ffed',
+      borderColor: '#52c41a'
+    },
+    cash: {
+      name: '현금보유',
+      color: 'default',
+      icon: '💵',
+      description: '하락장 감지 — 신규 매수 중단, 보유 포지션 전량 청산',
+      risk: '없음',
+      expectedReturn: '0% (관망)',
+      bgColor: '#f5f5f5',
+      borderColor: '#d9d9d9'
     }
   };
 
@@ -205,8 +225,9 @@ export const RSIModeIndicator: React.FC<RSIModeIndicatorProps> = ({
         {/* RSI 모드 조건 안내 */}
         <div style={{ marginTop: 8 }}>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            <strong>안전모드 진입:</strong> RSI 하락/하향 돌파<br/>
-            <strong>공세모드 진입:</strong> RSI 상승/상향 돌파
+            <strong>안전모드 진입:</strong> RSI 하락/하향 돌파/과매수(65↑)<br/>
+            <strong>강세모드 진입:</strong> RSI 55-65 구간 상승 중 (매수 -2%)<br/>
+            <strong>공세모드 진입:</strong> RSI 상승/상향 돌파 (매수 -5%)
           </Text>
         </div>
       </Space>

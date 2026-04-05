@@ -54,13 +54,13 @@ export class DongpaEngine {
 
     // 전일 종가 대비 오늘 종가 변동률 계산
     const 변동률 = ((오늘종가 - 전일종가) / 전일종가);
-    const 목표상승률 = modeConfig.buyTarget;
+    const 매수임계값 = modeConfig.buyTarget;  // 음수 (예: -0.03)
 
     // 분할금액 계산
     const 분할금액 = 초기자금 / 분할횟수;
 
-    // 매수 조건: 변동률 < 목표상승률 (목표보다 낮으면 매수)
-    if (변동률 < 목표상승률 && 예수금 >= 분할금액) {
+    // 매수 조건: 전일 대비 하락률 ≥ |buyTarget| (buyTarget 이하로 하락 시 매수)
+    if (변동률 <= 매수임계값 && 예수금 >= 분할금액) {
       // LOC: 오늘 종가에 매수
       const 매수량 = Math.floor(분할금액 / 오늘종가);
       const 매수금액 = 매수량 * 오늘종가;
@@ -73,9 +73,9 @@ export class DongpaEngine {
           매수가: 오늘종가,
           매수금액,
           수수료,
-          상승률: 변동률 * 100,  // 실제로는 변동률
-          목표상승률: 목표상승률 * 100,
-          메시지: `🔻 매수: ${매수량}주 @$${오늘종가.toFixed(2)} (변동률 ${(변동률 * 100).toFixed(2)}% < 목표 ${(목표상승률 * 100).toFixed(2)}%)`
+          상승률: 변동률 * 100,
+          목표상승률: 매수임계값 * 100,
+          메시지: `🔻 매수: ${매수량}주 @$${오늘종가.toFixed(2)} (변동률 ${(변동률 * 100).toFixed(2)}% ≤ 목표 ${(매수임계값 * 100).toFixed(2)}%)`
         };
       }
     }
@@ -87,9 +87,9 @@ export class DongpaEngine {
       매수금액: 0,
       수수료: 0,
       상승률: 변동률 * 100,
-      목표상승률: 목표상승률 * 100,
-      메시지: 변동률 >= 목표상승률
-        ? `대기: 변동률 ${(변동률 * 100).toFixed(2)}% >= 목표 ${(목표상승률 * 100).toFixed(2)}%`
+      목표상승률: 매수임계값 * 100,
+      메시지: 변동률 > 매수임계값
+        ? `대기: 변동률 ${(변동률 * 100).toFixed(2)}% > 목표 ${(매수임계값 * 100).toFixed(2)}%`
         : `현금 부족 (필요: $${분할금액.toFixed(2)}, 보유: $${예수금.toFixed(2)})`
     };
   }
@@ -247,7 +247,7 @@ export class DongpaEngine {
     const 현재평단가 = 이전기록?.평단가 || 0;
     const 매수일자 = 이전기록?.매수일자 || '';
 
-    // 매수 분가 = 전일 종가 × (1 + 목표상승률) - 표시용
+    // 매수 기준가 = 전일 종가 × (1 + 매수임계값) - 표시용 (전일 종가의 buyTarget% 하락 지점)
     const 매수지정가 = 전일종가 * (1 + modeConfig.buyTarget);
     const 목표량 = Math.floor(매수예정 / 매수지정가);
 
@@ -468,7 +468,7 @@ export class DongpaEngine {
       safe: {
         name: "안전모드",
         description: "보수적인 매매로 안정적인 수익 추구",
-        buyCondition: `매수 조건: 전일 대비 변동률 < ${modeConfig.buyTarget * 100}% (${modeConfig.buyTarget * 100}% 미만 상승 or 하락)`,
+        buyCondition: `매수 조건: 전일 대비 하락률 ≥ ${Math.abs(modeConfig.buyTarget * 100)}% (${modeConfig.buyTarget * 100}% 이하 하락 시 매수)`,
         sellCondition: `매도 조건: 평단가 대비 ${modeConfig.sellTarget * 100}% 수익 또는 ${modeConfig.holdingDays}거래일 도달 시 손절`,
         riskLevel: "중간",
         expectedReturn: "연 15-25%",
@@ -478,7 +478,7 @@ export class DongpaEngine {
       aggressive: {
         name: "공세모드",
         description: "적극적인 매매로 높은 수익 추구",
-        buyCondition: `매수 조건: 전일 대비 변동률 < ${modeConfig.buyTarget * 100}% (${modeConfig.buyTarget * 100}% 미만 상승 or 하락)`,
+        buyCondition: `매수 조건: 전일 대비 하락률 ≥ ${Math.abs(modeConfig.buyTarget * 100)}% (${modeConfig.buyTarget * 100}% 이하 하락 시 매수)`,
         sellCondition: `매도 조건: 평단가 대비 ${modeConfig.sellTarget * 100}% 수익 또는 ${modeConfig.holdingDays}거래일 도달 시 손절`,
         riskLevel: "높음",
         expectedReturn: "연 30-50%",

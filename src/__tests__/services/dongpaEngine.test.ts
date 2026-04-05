@@ -48,12 +48,12 @@ describe('DongpaEngine', () => {
       engine = new DongpaEngine(defaultConfig);
     });
 
-    it('should return BUY signal when price drops more than buy target', () => {
+    it('should return BUY signal when price drops at least 3% (safe buy threshold)', () => {
       const result = engine.getTodayBuySignal({
         초기자금: 10000,
         분할횟수: 5,
         매매모드: 'safe',
-        오늘종가: 97, // 3% 하락
+        오늘종가: 97, // 3% 하락 (매수 임계값 -3% 충족)
         전일종가: 100,
         예수금: 2000,
       });
@@ -63,12 +63,12 @@ describe('DongpaEngine', () => {
       expect(result.매수가).toBe(97);
     });
 
-    it('should return HOLD signal when price rises above buy target', () => {
+    it('should return HOLD signal when price does not drop enough', () => {
       const result = engine.getTodayBuySignal({
         초기자금: 10000,
         분할횟수: 5,
         매매모드: 'safe',
-        오늘종가: 104, // 4% 상승 (목표 3% 이상이면 매수 안 함)
+        오늘종가: 104, // 4% 상승 (하락 아님 → 매수 안 함)
         전일종가: 100,
         예수금: 2000,
       });
@@ -111,12 +111,12 @@ describe('DongpaEngine', () => {
         초기자금: 10000,
         분할횟수: 5,
         매매모드: 'aggressive',
-        오늘종가: 106, // 6% 상승 (aggressive 목표 5% 이상이면 매수 안 함)
+        오늘종가: 106, // 6% 상승 (하락 아님 → 매수 안 함)
         전일종가: 100,
         예수금: 2000,
       });
 
-      expect(result.신호).toBe('HOLD'); // 5% 이상 상승이므로 대기
+      expect(result.신호).toBe('HOLD'); // 하락하지 않았으므로 대기
     });
   });
 
@@ -143,7 +143,7 @@ describe('DongpaEngine', () => {
     it('should return SELL signal when profit target reached', () => {
       const result = engine.getTodaySellSignal({
         매매모드: 'safe',
-        오늘종가: 100.3, // 0.3% 상승 (safe 목표: 0.2%)
+        오늘종가: 100.6, // 0.6% 상승 (safe 목표: 0.5%)
         평단가: 100,
         보유량: 10,
         매수일자: '2025-01-01',
@@ -374,7 +374,7 @@ describe('DongpaEngine', () => {
       const info = engine.getStrategyInfo();
 
       expect(info.name).toBe('공세모드');
-      expect(info.maxHoldingDays).toBe(7);
+      expect(info.maxHoldingDays).toBe(10);
     });
 
     it('should return auto mode info', () => {

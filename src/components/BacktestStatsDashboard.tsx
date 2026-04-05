@@ -84,6 +84,25 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
     }
   });
 
+  // 연환산 수익률 (CAGR)
+  const tradingDays = trades.length;
+  const years = tradingDays / 252;
+  const cagr = years > 0 ? (Math.pow(finalValue / initialCapital, 1 / years) - 1) * 100 : 0;
+
+  // 기대값 (EV) = 승률×평균수익 - 패율×평균손실
+  // 양수면 "장기적으로 반드시 이익"이 되는 구조
+  const winRateDecimal = sellActions.length > 0 ? profitableSells.length / sellActions.length : 0;
+  const lossRateDecimal = 1 - winRateDecimal;
+  const ev = (winRateDecimal * avgProfit) + (lossRateDecimal * avgLoss); // avgLoss는 음수
+  const evRate = sellActions.length > 0 && initialCapital > 0
+    ? (ev / (initialCapital / (config.divisions || 5))) * 100
+    : 0;
+
+  // 손절 비율
+  const stopLossRate = (sellActions.length + stopLossActions.length) > 0
+    ? (stopLossActions.length / (sellActions.length + stopLossActions.length)) * 100
+    : 0;
+
   // 재분할 이벤트
   const rebalanceEvents = trades.filter(t => t.isRebalanceDay);
 
@@ -216,12 +235,12 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
     aggressive: {
       label: '공세모드',
       tagColor: 'red',
-      holdInfo: '공세모드: 7거래일'
+      holdInfo: '공세모드: 10거래일'
     },
     auto: {
-      label: 'RSI 자동모드',
+      label: 'RSI 자동모드 (강세 포함)',
       tagColor: 'gold',
-      holdInfo: 'RSI 자동: 안전 30거래일 / 공세 7거래일'
+      holdInfo: 'RSI 자동: 안전 30거래일 / 공세 10거래일 / 강세 15거래일'
     }
   } as const;
   const currentModeMeta = modeMeta[config.mode];
@@ -285,6 +304,44 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
                   valueStyle={{ color: winRate >= 50 ? '#3f8600' : '#ff7a45' }}
                   suffix="%"
                 />
+              </Col>
+              <Col xs={12} sm={8} md={6} lg={4}>
+                <Statistic
+                  title="연환산 수익률"
+                  value={cagr}
+                  prefix={<RiseOutlined />}
+                  precision={1}
+                  valueStyle={{ color: cagr >= 0 ? '#3f8600' : '#cf1322' }}
+                  suffix="%/년"
+                />
+              </Col>
+              <Col xs={12} sm={8} md={6} lg={4}>
+                <Statistic
+                  title="기대값 (EV)"
+                  value={ev}
+                  precision={2}
+                  prefix={ev >= 0 ? <RiseOutlined /> : <FallOutlined />}
+                  valueStyle={{
+                    color: ev >= 0 ? '#3f8600' : '#cf1322',
+                    fontWeight: 'bold'
+                  }}
+                  suffix="$"
+                />
+                <div style={{ fontSize: 11, color: ev >= 0 ? '#52c41a' : '#ff4d4f', marginTop: 4 }}>
+                  {ev >= 0 ? '✅ 장기 수익 구조' : '❌ 장기 손실 구조'}
+                </div>
+              </Col>
+              <Col xs={12} sm={8} md={6} lg={4}>
+                <Statistic
+                  title="손절 비율"
+                  value={stopLossRate}
+                  precision={1}
+                  valueStyle={{ color: stopLossRate > 30 ? '#cf1322' : '#faad14' }}
+                  suffix="%"
+                />
+                <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                  {stopLossActions.length}건 손절 / {sellActions.length + stopLossActions.length}건 매도
+                </div>
               </Col>
               <Col xs={12} sm={8} md={6} lg={4}>
                 <Statistic
