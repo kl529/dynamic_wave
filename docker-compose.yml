@@ -1,0 +1,27 @@
+services:
+  web:
+    build: .
+    container_name: dynamic-wave
+    ports:
+      - "127.0.0.1:3300:3000"
+    environment:
+      HOSTNAME: "0.0.0.0"
+      SITE_PASSWORD: ${SITE_PASSWORD}
+      PG_HOST: postgres
+      PG_USER: jiwon
+      PG_DB: homelab
+      PG_PASSWORD: ${PG_PASSWORD}
+    networks:
+      - default
+      - homelab-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  homelab-net:
+    external: true
