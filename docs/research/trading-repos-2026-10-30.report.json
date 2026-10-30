@@ -1,0 +1,487 @@
+{
+ "title": "자동매매 오픈소스 27개 비교 — 그대로 쓸 완성품은 없다",
+ "result": "인기 저장소는 종목 분석 LLM이나 암호화폐 봇이었다. 우리에게 쓸모 있는 건 증권사 공식 API(주문 자동화)와 독립 백테스터(교차 검증)뿐이다.",
+ "label": "2026-10-30 · GitHub API 조회 14:40 KST · 27개 저장소",
+ "summary": {
+  "points": [
+   {
+    "label": "LLM 분석 도구 9개",
+    "text": "별은 가장 많지만(TradingAgents 11.8만) 종목 의견을 내는 도구다. 규칙 매매 백테스트와 성격이 다르고 과거 성과는 모델 기억 문제로 믿기 어렵다."
+   },
+   {
+    "label": "자동매매 봇 4개",
+    "text": "freqtrade·jesse·hummingbot·OctoBot 모두 암호화폐 전용."
+   },
+   {
+    "label": "백테스터",
+    "text": "vectorbt로 우리 QLD 전략을 재현했고 결과가 같았다. 계산을 독립 확인하는 용도로 쓴다."
+   },
+   {
+    "label": "한국 증권사 API",
+    "text": "한국투자 open-trading-api, 키움 Kiwoom-REST-API가 공식·활발. 주문 자동화 후보."
+   }
+  ],
+  "metrics": [
+   {
+    "label": "조사 저장소",
+    "value": "27",
+    "unit": "개",
+    "note": "4개 그룹"
+   },
+   {
+    "label": "우리 전략에 적합(상)",
+    "value": "2",
+    "unit": "개",
+    "note": "KIS 공식 API, bt"
+   },
+   {
+    "label": "교차 검증 오차",
+    "value": "0.001",
+    "unit": "%p",
+    "note": "vectorbt vs 우리, 세전 CAGR"
+   }
+  ]
+ },
+ "sections": [
+  {
+   "id": "compare",
+   "nav_title": "우리 vs 오픈소스",
+   "title": "우리 시스템과 나란히",
+   "conclusion": "미국 ETF를 하루 한 번 한국 증권사로 사는 방식에 그대로 쓸 완성품은 없었다. 세금 22%를 계산해 주는 도구도 없었다.",
+   "table": {
+    "columns": [
+     "항목",
+     "우리 (dongpa)",
+     "LLM 분석",
+     "백테스트 프레임워크",
+     "자동매매 봇",
+     "한국 증권사 API"
+    ],
+    "rows": [
+     [
+      "하는 일",
+      "QLD 추세 신호·주문 수량·백테스트",
+      "종목 리포트·매수 의견",
+      "전략 시뮬레이션",
+      "실시간 자동 주문",
+      "시세·주문 API"
+     ],
+     [
+      "미국 ETF",
+      "예",
+      "일부",
+      "예",
+      "아니오 (암호화폐)",
+      "예 (해외주식)"
+     ],
+     [
+      "한국 증권사 주문",
+      "수동 (앱이 수량 계산)",
+      "없음",
+      "없음",
+      "없음",
+      "공식"
+     ],
+     [
+      "미래 데이터 방지",
+      "테스트로 고정",
+      "근본 해결 어려움",
+      "도구마다 다름",
+      "—",
+      "—"
+     ],
+     [
+      "세금 22%",
+      "반영",
+      "없음",
+      "없음",
+      "없음",
+      "없음"
+     ]
+    ]
+   }
+  },
+  {
+   "id": "llm",
+   "nav_title": "LLM·AI 투자 분석",
+   "title": "LLM·AI 투자 분석 (9개)",
+   "conclusion": "모두 우리 전략에는 맞지 않는다. 종목을 글로 분석하는 도구이고, 과거 백테스트는 모델이 결과를 '기억'하는 문제가 있다.",
+   "table": {
+    "columns": [
+     "저장소",
+     "별",
+     "용도",
+     "적합"
+    ],
+    "rows": [
+     [
+      "TradingAgents",
+      "118k",
+      "분석가(펀더멘털·심리·뉴스·기술)·강세/약세 토론·트레이더·리스크·PM으로 구성된 다중 LLM 에이전…",
+      "하"
+     ],
+     [
+      "OpenBB",
+      "75k",
+      "Open Data Platform(ODP): 공개·유료 데이터 공급자를 Python/REST/MCP로…",
+      "하"
+     ],
+     [
+      "daily_stock_analysis",
+      "67k",
+      "관심종목을 LLM으로 매일 분석해 \"결정 대시보드\"를 메신저·메일로 푸시하는 시스템…",
+      "하"
+     ],
+     [
+      "ai-hedge-fund",
+      "64k",
+      "LLM 투자자 페르소나 에이전트가 매매 판단을 내리는 교육용 개념검증. 현재는 `aihf` 터미널 앱…",
+      "하"
+     ],
+     [
+      "qlib",
+      "50k",
+      "데이터·ML 모델·포트폴리오 전략·평가를 잇는 AI 퀀트 연구 플랫폼(RD-Agent 연계)",
+      "하"
+     ],
+     [
+      "Vibe-Trading",
+      "37k",
+      "자연어 질의→데이터 로딩→전략 생성→백테스트→보고서→(선택) 브로커 연결까지 잇는 LLM 트레이딩 에…",
+      "하"
+     ],
+     [
+      "FinGPT",
+      "21k",
+      "금융 감성분석용 LLM 미세조정·데이터셋·벤치마크 프로젝트",
+      "하"
+     ],
+     [
+      "ai-berkshire",
+      "17k",
+      "Claude Code/Codex용 가치투자 리서치 스킬 모음…",
+      "하"
+     ],
+     [
+      "FinRobot",
+      "8k",
+      "LLM 기반 금융 리서치 에이전트. V2는 Python 계산(DCF/DDM 등)+LLM 서술 보고서…",
+      "하"
+     ]
+    ]
+   },
+   "details": [
+    {
+     "title": "적합도 판단 근거",
+     "items": [
+      "TauricResearch/TradingAgents (최근 push 2026-10-27, Apache-2.0): 종목별 정성 판단 도구이고 LLM 기억 누출 위험이 있어 정직한 장기 백테스트 요구와 맞지 않음",
+      "openbq-org/OpenBB (최근 push 2026-10-24, NOASSERTION): 소유자는 이미 Yahoo 시세 경로가 있고, 관리 주체가 바뀌는 중이라 새로 의존을 늘릴 이유가 약함",
+      "ZhuLinsen/daily_stock_analysis (최근 push 2026-10-25, MIT): 중국 시장 중심의 종목 코멘트 푸시 도구이고 매매 실행·손익 백테스트가 없음",
+      "virattt/ai-hedge-fund (최근 push 2026-10-27, MIT): 실주문 없음, LLM 판단 기반이라 규칙형 ETF 전략의 검증·실행 어느 쪽에도 쓸모가 낮음",
+      "microsoft/qlib (최근 push 2026-10-30, MIT): 횡단면 종목선택 ML 연구용이라 단일 지수 ETF 추세추종에는 과함",
+      "HKUDS/Vibe-Trading (최근 push 2026-10-30, MIT): 한국 시장 인식은 인기 LLM 도구 중 가장 높지만, KIS 연결은 국내주식·모의투자 한정이고 규모·변경 속도가 커서 하루 1회 QLD 규칙 운용엔 과함(관찰 대상)",
+      "AI4Finance-Foundation/FinGPT (최근 push 2026-10-25, MIT): NLP 부품 연구용이며 README상 신규 모델 릴리스가 2023년에 멈춤",
+      "xbtlin/ai-berkshire (최근 push 2026-10-27, MIT): 개별 기업 정성 분석 도구라 ^NDX 이동평균 기반 QLD 비중 규칙과 접점이 없음",
+      "AI4Finance-Foundation/FinRobot (최근 push 2026-10-24, Apache-2.0): 개별기업 보고서 생성기로 ETF 규칙 전략과 무관"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "bots",
+   "nav_title": "자동매매 봇",
+   "title": "자동매매 봇 (4개)",
+   "conclusion": "4개 모두 암호화폐 거래소 전용이라 미국 ETF·한국 증권사에 쓸 수 없다.",
+   "table": {
+    "columns": [
+     "저장소",
+     "별",
+     "용도",
+     "적합"
+    ],
+    "rows": [
+     [
+      "freqtrade",
+      "56k",
+      "암호화폐 전용 오픈소스 매매 봇(Telegram/웹 UI, 백테스트·최적화·FreqAI)",
+      "하"
+     ],
+     [
+      "hummingbot",
+      "21k",
+      "CEX/DEX 대상 고빈도·마켓메이킹 암호화폐 봇 프레임워크(Condor AI 하네스)",
+      "하"
+     ],
+     [
+      "jesse",
+      "9k",
+      "암호화폐 알고리즘 매매 프레임워크(연구·백테스트·최적화·라이브)",
+      "하"
+     ],
+     [
+      "OctoBot",
+      "7k",
+      "시각적 UI의 암호화폐 매매 봇(그리드·DCA·바스켓·TradingView·AI 커넥터)",
+      "하"
+     ]
+    ]
+   },
+   "details": [
+    {
+     "title": "적합도 판단 근거",
+     "items": [
+      "freqtrade/freqtrade (최근 push 2026-10-30, GPL-3.0): 암호화폐 전용이라 QLD/미국 ETF에 쓸 수 없음",
+      "hummingbot/hummingbot (최근 push 2026-10-20, Apache-2.0): 암호화폐 마켓메이킹 전용",
+      "jesse-ai/jesse (최근 push 2026-10-29, MIT): 암호화폐 전용",
+      "Drakkar-Software/OctoBot (최근 push 2026-10-27, GPL-3.0): 암호화폐 전용"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "backtest",
+   "nav_title": "백테스트 프레임워크",
+   "title": "백테스트 프레임워크 (8개)",
+   "conclusion": "우리 계산을 독립 확인하는 데 쓸 만하다. vectorbt로 실제 재현했고 결과가 같았다.",
+   "table": {
+    "columns": [
+     "저장소",
+     "별",
+     "용도",
+     "적합"
+    ],
+    "rows": [
+     [
+      "nautilus_trader",
+      "31k",
+      "Rust 코어 + Python 제어의 고성능 이벤트 기반 백테스트·라이브 엔진…",
+      "하"
+     ],
+     [
+      "backtrader",
+      "24k",
+      "이벤트 기반 Python 백테스트·라이브 트레이딩 라이브러리(고전 표준)",
+      "하"
+     ],
+     [
+      "Lean",
+      "22k",
+      "C#/Python 이벤트 기반 알고리즘 트레이딩 엔진…",
+      "중"
+     ],
+     [
+      "FinRL",
+      "17k",
+      "심층강화학습(DRL) 기반 금융 매매 프레임워크…",
+      "하"
+     ],
+     [
+      "vectorbt",
+      "10k",
+      "NumPy/Numba(선택적 Rust) 기반 벡터화 백테스트·대량 파라미터 스윕 도구…",
+      "중"
+     ],
+     [
+      "backtesting.py",
+      "9k",
+      "단일 종목 OHLC 기반의 가볍고 문서화가 잘 된 Python 백테스트 라이브러리",
+      "중"
+     ],
+     [
+      "bt",
+      "3k",
+      "알고리즘 블록(스케줄·선택·비중·리밸런싱)을 조합하는 포트폴리오 비중 기반 백테스트 라이브러리…",
+      "상"
+     ],
+     [
+      "zipline-reloaded",
+      "2k",
+      "Quantopian Zipline 이벤트 기반 백테스터의 커뮤니티 유지판",
+      "하"
+     ]
+    ]
+   },
+   "details": [
+    {
+     "title": "적합도 판단 근거",
+     "items": [
+      "nautechsystems/nautilus_trader (최근 push 2026-10-30, LGPL-3.0): 고빈도·다중 venue용 엔진이라 하루 1회 QLD 비중 조정에는 과함",
+      "mementum/backtrader (최근 push 2024-08-19, GPL-3.0): 기능은 충분하나 유지보수가 멈춰 장기 운용 기반으로 부적합",
+      "QuantConnect/Lean (최근 push 2026-10-30, Apache-2.0): 비용·체결 모델이 가장 엄밀하지만 하루 1회 ETF 규칙에는 무겁고 한국 증권사 실행은 KIS 저장소를 거쳐야 함",
+      "AI4Finance-Foundation/FinRL (최근 push 2026-10-25, MIT): RL은 과적합 위험이 크고 규칙형 추세추종을 대체할 근거가 없음",
+      "polakowo/vectorbt (최근 push 2026-10-28, NOASSERTION): 5개 이동평균 기간·임계값 견고성 스윕에 빠르지만 종가 체결 기본값과 Commons Clause를 의식해야 함",
+      "kernc/backtesting.py (최근 push 2026-08-05, AGPL-3.0): 소유자 전략을 짧게 재구현해 체결 시점(종가 vs 다음날 시가) 민감도를 독립 확인하기 좋으나 단일 종목·Python",
+      "pmorissette/bt (최근 push 2026-10-25, MIT): \"QLD 비중 = 5개 MA 중 위에 있는 비율\" 같은 목표비중 리밸런싱 구조와 같아 독립 재구현·교차검증 비용이 가장 낮음",
+      "stefan-jansen/zipline-reloaded (최근 push 2026-10-26, Apache-2.0): 공식적으로 유지 모드이고 신규 사용은 후속 라이브러리를 권장함"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "kr",
+   "nav_title": "한국 증권사 API",
+   "title": "한국 증권사 API (6개)",
+   "conclusion": "한국투자·키움 공식 저장소가 해외주식 주문을 지원한다. 나중에 주문 자동화에 쓸 후보다.",
+   "table": {
+    "columns": [
+     "저장소",
+     "별",
+     "용도",
+     "적합"
+    ],
+    "rows": [
+     [
+      "open-trading-api",
+      "2k",
+      "한국투자증권 KIS Open API 공식 샘플 저장소…",
+      "상"
+     ],
+     [
+      "python-kis",
+      "288",
+      "한국투자증권 REST/WebSocket 비공식 Python 라이브러리…",
+      "중"
+     ],
+     [
+      "kis-ai-extensions",
+      "218",
+      "KIS Open API를 Claude Code·Cursor·Codex·Gemini CLI에서 자연어로…",
+      "중"
+     ],
+     [
+      "pykiwoom",
+      "112",
+      "키움증권 OpenAPI+(구형 Windows COM/OCX 방식) Python 래퍼",
+      "하"
+     ],
+     [
+      "mojito",
+      "92",
+      "한국 증권사 REST Open API 통합 Python 래퍼(실제로는 한국투자증권 중심)",
+      "하"
+     ],
+     [
+      "Kiwoom-REST-API",
+      "65",
+      "키움증권 공식 REST API 클라이언트·샘플·CLI(kwcli)·MCP 서버",
+      "중"
+     ]
+    ]
+   },
+   "details": [
+    {
+     "title": "적합도 판단 근거",
+     "items": [
+      "koreainvestment/open-trading-api (최근 push 2026-10-27, None): KIS 계좌라면 QLD 장마감 주문 자동화에 쓸 공식 REST 레퍼런스이며 최근까지 활발히 갱신됨(언어 무관 REST라 TS에서도 참고 가능)",
+      "Soju06/python-kis (최근 push 2026-02-21, MIT): Python으로 KIS 해외주식 주문을 짤 때 가장 편한 래퍼지만 소유자 스택(TS)과 다르고 갱신이 둔화됨",
+      "koreainvestment/kis-ai-extensions (최근 push 2026-06-24, None): Claude Code로 KIS 조회·모의 주문을 다루기엔 편하지만 백테스터가 국내주식 중심이고 실주문 경로라 신중해야 함",
+      "sharebook-kr/pykiwoom (최근 push 2025-07-09, Apache-2.0): 키움이 공식 REST API를 내놓아 레거시 OCX 래퍼를 새로 채택할 이유가 없음",
+      "sharebook-kr/mojito (최근 push 2024-02-20, MIT): 2년 넘게 갱신이 없어 KIS API 변경에 대응하지 못할 위험",
+      "Kiwoom-Securities/Kiwoom-REST-API (최근 push 2026-09-15, NOASSERTION): 키움 계좌라면 미국주식 주문까지 공식 지원돼 \"상\"이지만, 계좌 전제·독점 라이선스·짧은 이력 때문에 조건부"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "crosscheck",
+   "nav_title": "교차 검증",
+   "title": "vectorbt로 우리 결과를 재현했다",
+   "conclusion": "같은 QLD 추세 전략을 vectorbt로 돌린 결과가 4개 구간 모두 우리 엔진과 세전 연복리 0.001%p 이내로 같았다.",
+   "table": {
+    "columns": [
+     "구간",
+     "우리 엔진",
+     "vectorbt"
+    ],
+    "rows": [
+     [
+      "2007~2026",
+      "20.241%",
+      "20.241%"
+     ],
+     [
+      "2010~2026",
+      "20.612%",
+      "20.612%"
+     ],
+     [
+      "2007~2012",
+      "8.601%",
+      "8.602%"
+     ],
+     [
+      "2018~2023",
+      "24.519%",
+      "24.517%"
+     ]
+    ]
+   },
+   "caveat": "vectorbt는 기본이 당일 종가 체결이라, 신호를 하루 늦춰 넣었다. 그대로 쓰면 결과가 낙관적으로 나온다."
+  },
+  {
+   "id": "adopt",
+   "nav_title": "가져다 쓸 것",
+   "title": "우리가 가져다 쓸 것",
+   "conclusion": "증권사 공식 API로 '주문 초안'을 자동으로 만드는 것이 가장 실용적이다. 실제 전송은 사람이 확인한 뒤에 한다.",
+   "table": {
+    "columns": [
+     "순서",
+     "무엇",
+     "왜"
+    ],
+    "rows": [
+     [
+      "1",
+      "증권사 공식 API로 주문 초안 자동 생성",
+      "매일 수량 계산·입력 실수를 없앤다"
+     ],
+     [
+      "2",
+      "vectorbt 교차 검증을 연 1회 함께 실행",
+      "계산이 틀어지지 않았는지 독립 확인"
+     ],
+     [
+      "3",
+      "(선택) backtesting.py로 다음 날 시가 체결 민감도",
+      "종가 주문이 안 될 때 차이 확인"
+     ]
+    ]
+   },
+   "caveat": "QLD를 한국투자·키움 API로 실제 주문할 수 있는지는 호출해 보지 않았다. 실주문 연동은 별도 승인 후 진행한다."
+  }
+ ],
+ "faq": [
+  {
+   "question": "별이 많은 AI 투자 도구를 쓰면 더 벌 수 있나요?",
+   "answer": "근거가 없습니다. 공개된 수익률은 모두 작성자 주장이고 독립 재현된 것이 없습니다. 과거 구간 백테스트는 LLM이 그 시기 결과를 이미 학습했을 수 있어 믿기 어렵습니다."
+  },
+  {
+   "question": "자동매매 봇으로 QLD 매매를 자동화할 수 있나요?",
+   "answer": "인기 봇은 모두 암호화폐 거래소용이라 안 됩니다. 한국 증권사 공식 API(한국투자·키움)로 직접 연결해야 합니다."
+  },
+  {
+   "question": "우리 백테스트 결과는 믿을 만한가요?",
+   "answer": "다른 엔진(vectorbt)으로 같은 전략을 돌려 같은 결과를 얻었고, 미래 데이터 미사용은 테스트로 고정했습니다. 다만 과거 성과가 미래를 보장하지는 않습니다."
+  }
+ ],
+ "sources": [
+  {
+   "label": "비교 문서 (markdown)",
+   "href": "trading-repos-2026-10-30.md"
+  },
+  {
+   "label": "원자료 (JSON)",
+   "href": "trading-repos-2026-10-30.json"
+  },
+  {
+   "label": "교차 검증",
+   "href": "../validation/crosscheck.md"
+  },
+  {
+   "label": "9월 LLM 도구 조사",
+   "href": "ai-investing-open-source.md"
+  }
+ ],
+ "scope": "GitHub REST API로 별·push·라이선스 확인, README·문서 일부 열람. 설치·수익률 재현은 vectorbt 교차 검증 1건만.",
+ "observed_at": "2026-10-30"
+}

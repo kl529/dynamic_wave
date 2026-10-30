@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Layout, Card, Space, Button, message, Alert, Table, Tag, Typography } from 'antd';
+import { Layout, Card, Space, Button, message, Alert, Table, Tag, Typography, Segmented } from 'antd';
 import { ArrowLeftOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -10,6 +10,7 @@ import { BacktestConfigPanel, type BacktestConfig } from '@/components/BacktestC
 import { BacktestResultsChart } from '@/components/BacktestResultsChart';
 import { BacktestStatsDashboard } from '@/components/BacktestStatsDashboard';
 import { BacktestDebugTable } from '@/components/BacktestDebugTable';
+import { StrategyBacktest } from '@/components/StrategyBacktest';
 import { DivisionEngine } from '@/services/divisionEngine';
 import { MarketDataService } from '@/services/marketDataService';
 import { enrichDataWithWeeklyRSIMode } from '@/utils/rsiCalculator';
@@ -45,6 +46,7 @@ export default function BacktestPage() {
   const [hasRunBacktest, setHasRunBacktest] = useState(false);
   const [sweepResults, setSweepResults] = useState<SweepResult[]>([]);
   const [sweepLoading, setSweepLoading] = useState(false);
+  const [kind, setKind] = useState<'trend' | 'dongpa'>('trend');
 
   const handleConfigChange = (newConfig: BacktestConfig) => {
     setConfig(newConfig);
@@ -84,23 +86,7 @@ export default function BacktestPage() {
         Object.keys(customModeConfigs).length > 0 ? customModeConfigs : undefined
       );
 
-      const marketData = await fetchHistoricalMarketData(
-        config.startDate,
-        config.endDate
-      );
-
-      if (!marketData.length) {
-        throw new Error('선택한 기간의 SOXL 종가 데이터를 불러오지 못했습니다.');
-      }
-
-      // 주간 RSI 기반 모드 계산
-      const dataWithMode = enrichDataWithWeeklyRSIMode(marketData);
-      const modesByDate = new Map<string, 'safe' | 'aggressive' | 'bull' | 'cash'>();
-      dataWithMode.forEach(day => {
-        if (day.mode) {
-          modesByDate.set(day.date, day.mode);
-        }
-      });
+      const { marketData, modesByDate } = await fetchHistoricalMarketData(config.startDate, config.endDate);
 
       // 백테스팅 실행 (RSI 모드 적용)
       const results = engine.backtest(
@@ -126,12 +112,7 @@ export default function BacktestPage() {
     try {
       message.loading({ content: '파라미터 스윕 실행 중...', key: 'sweep', duration: 0 });
 
-      const marketData = await fetchHistoricalMarketData(config.startDate, config.endDate);
-      if (!marketData.length) throw new Error('시장 데이터 없음');
-
-      const dataWithMode = enrichDataWithWeeklyRSIMode(marketData);
-      const modesByDate = new Map<string, 'safe' | 'aggressive' | 'bull' | 'cash'>();
-      dataWithMode.forEach(day => { if (day.mode) modesByDate.set(day.date, day.mode); });
+      const { marketData, modesByDate } = await fetchHistoricalMarketData(config.startDate, config.endDate);
 
       const days = marketData.length;
       const years = days / 252;
@@ -163,7 +144,7 @@ export default function BacktestPage() {
           });
 
           const allActions = records.flatMap(r => r.divisionActions);
-          const sells = allActions.filter(a => a.action === 'SELL');
+          const sells = allActions.filter(a => a.action === 'SELL' || a.action === 'STOP_LOSS'); // 손절 포함
           const wins = sells.filter(a => (a.profit || 0) > 0);
           const winRate = sells.length > 0 ? (wins.length / sells.length) * 100 : 0;
 
@@ -271,7 +252,7 @@ export default function BacktestPage() {
                 </div>
               </Space>
 
-              {hasRunBacktest && (
+              {kind === 'dongpa' && hasRunBacktest && (
                 <Button
                   type="primary"
                   icon={<DownloadOutlined />}
@@ -283,28 +264,22 @@ export default function BacktestPage() {
             </Space>
           </Card>
 
+          <Segmented
+            value={kind}
+            onChange={v => setKind(v as 'trend' | 'dongpa')}
+            options={[{ label: '추천 전략 (QLD 추세)', value: 'trend' }, { label: '동파법 (SOXL)', value: 'dongpa' }]}
+            style={{ marginBottom: 16 }}
+          />
+
+          {kind === 'trend' && <StrategyBacktest />}
+
+          {kind === 'dongpa' && (<>
           {/* 안내 메시지 */}
           {!hasRunBacktest && (
             <Alert
               message="백테스팅 시작하기"
               description="아래에서 백테스팅 설정을 완료하고 '백테스팅 시작' 버튼을 클릭하세요. 과거 데이터를 기반으로 매매 전략의 성과를 시뮬레이션합니다."
               type="info"
-              showIcon
-              style={{ marginBottom: 24 }}
-            />
-          )}
-
-          {/* RSI Auto 모드 데이터 부족 경고 */}
-          {config.mode === 'auto' && (() => {
-            const start = new Date(config.startDate);
-            const end = new Date(config.endDate);
-            const daysDiff = Math.floor((end.getTime() - start.getTime()) / 86400000);
-            return daysDiff < 98; // 14주(주간 RSI 계산 최소 필요 기간)
-          })() && (
-            <Alert
-              message="RSI Auto 모드: 데이터 부족 경고"
-              description="주간 RSI 계산에는 최소 14주(약 98일) 데이터가 필요합니다. 현재 기간이 짧아 RSI 초기값이 없는 구간에서는 기본값(안전모드)으로 동작합니다. 정확한 RSI 기반 모드 전환을 원하면 기간을 3개월 이상으로 설정하세요."
-              type="warning"
               showIcon
               style={{ marginBottom: 24 }}
             />
@@ -444,16 +419,21 @@ export default function BacktestPage() {
               />
             </>
           )}
+          </>)}
         </div>
       </Content>
     </Layout>
   );
 }
 
+/**
+ * 기간 데이터와 날짜별 RSI 모드. 주간 RSI는 시작일 이전 데이터부터 계산해야 값이 수렴하므로
+ * 시작일보다 RSI_WARMUP_DAYS 거래일 앞에서부터 받아 모드를 계산한 뒤 기간만 잘라낸다.
+ */
 async function fetchHistoricalMarketData(
   startDate: string,
   endDate: string
-): Promise<MarketData[]> {
+): Promise<{ marketData: MarketData[]; modesByDate: Map<string, 'safe' | 'aggressive' | 'bull' | 'cash'> }> {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
@@ -461,23 +441,21 @@ async function fetchHistoricalMarketData(
     throw new Error('잘못된 백테스트 기간입니다.');
   }
 
-  // 오늘로부터 startDate까지의 일수 계산
-  const now = new Date();
+  // 오늘로부터 startDate까지의 거래일 수 (주말 제외 근사) + 워밍업
   const MILLIS_PER_DAY = 1000 * 60 * 60 * 24;
-  const daysFromStartToNow = Math.ceil((now.getTime() - start.getTime()) / MILLIS_PER_DAY);
-
-  // startDate 기준으로 충분한 데이터 가져오기
-  const totalDays = Math.max(daysFromStartToNow + BACKTEST.BUFFER_DAYS, BACKTEST.MIN_DAYS);
+  const calendarDays = Math.ceil((Date.now() - start.getTime()) / MILLIS_PER_DAY);
+  const totalDays = Math.max(Math.ceil((calendarDays * 5) / 7) + BACKTEST.BUFFER_DAYS + BACKTEST.RSI_WARMUP_DAYS, BACKTEST.MIN_DAYS);
   const rawData = await MarketDataService.getHistoricalSOXLData(totalDays);
 
   const startKey = start.toISOString().split('T')[0];
   const endKey = end.toISOString().split('T')[0];
 
-  const filtered = rawData.filter(({ date }) => date >= startKey && date <= endKey);
+  const modesByDate = new Map(enrichDataWithWeeklyRSIMode(rawData).map(d => [d.date, d.mode]));
+  const marketData = rawData.filter(({ date }) => date >= startKey && date <= endKey);
 
-  if (filtered.length === 0) {
+  if (marketData.length === 0) {
     throw new Error(`${startDate} ~ ${endDate} 기간의 데이터를 찾을 수 없습니다. API에서 제공하는 데이터 범위를 확인해주세요.`);
   }
 
-  return filtered;
+  return { marketData, modesByDate };
 }

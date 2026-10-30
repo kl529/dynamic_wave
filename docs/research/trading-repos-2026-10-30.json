@@ -1,0 +1,1081 @@
+[
+  {
+    "full_name": "xbtlin/ai-berkshire",
+    "url": "https://github.com/xbtlin/ai-berkshire",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "Claude Code/Codex용 가치투자 리서치 스킬 모음(README 기준 22개 스킬, 버핏·멍거·단융핑·리루 방법론, 보고서 2,274건 공개)",
+    "stars": 16940,
+    "forks": 2486,
+    "created_at": "2026-04-07T11:19:51Z",
+    "last_push": "2026-10-27T18:17:30Z",
+    "primary_language": "HTML",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음(정성 리서치)",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "미국 개별기업 분석 예시 있음(중국·홍콩 중심). ETF 전략 기능 없음",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "가치투자 체크리스트(통과/불통과/회색), thesis-drift 추적, 업종 funnel, 다중 에이전트 교차검증",
+    "performance_claims": "[작성자 주장] Futu 실계좌 스크린샷 기준 2024 +69.29%, 2025 +66.38%, 2년 누적 146만 元 초과. 외부감사·전체 거래기록·입출금 처리 미공개 → 독립 검증 불가, 프레임워크 재현 수익률 아님",
+    "adoption_effort": "스킬 설치는 쉬움. LLM 토큰 비용 큼(다중 에이전트). 데이터 키 별도",
+    "fit_for_owner": "하",
+    "fit_reason": "개별 기업 정성 분석 도구라 ^NDX 이동평균 기반 QLD 비중 규칙과 접점이 없음",
+    "sources": [
+      "https://api.github.com/repos/xbtlin/ai-berkshire",
+      "https://raw.githubusercontent.com/xbtlin/ai-berkshire/main/README.md"
+    ]
+  },
+  {
+    "full_name": "virattt/ai-hedge-fund",
+    "url": "https://github.com/virattt/ai-hedge-fund",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "LLM 투자자 페르소나 에이전트가 매매 판단을 내리는 교육용 개념검증. 현재는 `aihf` 터미널 앱(모의투자·백테스트 모드)",
+    "stars": 64357,
+    "forks": 11297,
+    "created_at": "2024-11-29T16:30:01Z",
+    "last_push": "2026-10-27T19:40:08Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "aihf",
+      "version": "2.6.2",
+      "uploaded": "2026-10-27",
+      "url": "https://pypi.org/project/aihf/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에 비용·슬리피지 설명 없음",
+      "lookahead": "README에 룩어헤드/LLM 기억 누출 대책 설명 없음(2026-09-30 조사 때 있던 관련 절이 현재 README에서 빠짐)"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음. README: \"the system does not actually make any trades\". 가짜 돈 모의투자 원장(해시 체인)만"
+    },
+    "us_stocks_etfs": "미국 종목(Financial Datasets 커버리지 의존). ETF 지원 여부 미확인",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "투자자 에이전트 조합으로 펀드(전략·자본·주기·종목) 구성, 벤치마크 대비 백테스트",
+    "performance_claims": "README에 수익률 주장 없음",
+    "adoption_effort": "pipx 설치는 간단. Financial Datasets API 키(유료) + LLM API 키 필요",
+    "fit_for_owner": "하",
+    "fit_reason": "실주문 없음, LLM 판단 기반이라 규칙형 ETF 전략의 검증·실행 어느 쪽에도 쓸모가 낮음",
+    "sources": [
+      "https://api.github.com/repos/virattt/ai-hedge-fund",
+      "https://raw.githubusercontent.com/virattt/ai-hedge-fund/main/README.md",
+      "https://pypi.org/pypi/aihf/json"
+    ]
+  },
+  {
+    "full_name": "TauricResearch/TradingAgents",
+    "url": "https://github.com/TauricResearch/TradingAgents",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "분석가(펀더멘털·심리·뉴스·기술)·강세/약세 토론·트레이더·리스크·PM으로 구성된 다중 LLM 에이전트 매매 판단 프레임워크(v0.7.1, 2026-10)",
+    "stars": 118416,
+    "forks": 22647,
+    "created_at": "2024-12-28T03:31:08Z",
+    "last_push": "2026-10-27T08:43:04Z",
+    "primary_language": "Python",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에서 거래비용 모델 미확인. v0.7.0부터 결정 후 첫 종가 기준 채점",
+      "lookahead": "데이터 측 point-in-time 강화(SEC 재무제표 제출 시점 기준, v0.3.1~v0.5.0 룩어헤드 수정, v0.7.1에서도 실행일 이후 공시를 읽던 버그 수정). 단 LLM 사전학습 기억(memorization)은 데이터 PIT로 막을 수 없음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음(승인 시 \"simulated exchange\"로 전송)"
+    },
+    "us_stocks_etfs": "예(Yahoo 기반). 미국 외 재무 PIT는 미지원",
+    "korean_broker_support": "없음(한국 종목은 Yahoo 접미사로만)",
+    "builtin_strategies": "LLM 분석가 4종 + 토론 + 리스크 검토 → 5단계 등급 결정",
+    "performance_claims": "[저자 논문 주장, 2026-09-30 기존 조사 인용·이번 미재확인] arXiv 2412.20138 v7 Table 1: 2024-01~03 AAPL 26.62%, AMZN 24.36%, GOOGL 23.21% 누적. 3종목·3개월 실험, 독립 재현 안 함",
+    "adoption_effort": "Python 3.11+, Docker 가능. 실행 1회당 LLM 호출 다수 → API 비용. 빈번한 버전 변경",
+    "fit_for_owner": "하",
+    "fit_reason": "종목별 정성 판단 도구이고 LLM 기억 누출 위험이 있어 정직한 장기 백테스트 요구와 맞지 않음",
+    "sources": [
+      "https://api.github.com/repos/TauricResearch/TradingAgents",
+      "https://raw.githubusercontent.com/TauricResearch/TradingAgents/main/README.md"
+    ]
+  },
+  {
+    "full_name": "openbq-org/OpenBB",
+    "requested_as": "OpenBB-finance/OpenBB",
+    "url": "https://github.com/openbq-org/OpenBB",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "Open Data Platform(ODP): 공개·유료 데이터 공급자를 Python/REST/MCP로 통합하는 데이터 계층",
+    "stars": 74887,
+    "forks": 7804,
+    "created_at": "2020-12-20T10:46:38Z",
+    "last_push": "2026-10-24T09:08:28Z",
+    "primary_language": "Python",
+    "license_github": "NOASSERTION",
+    "license_note": "LICENSE 파일은 Apache-2.0(앞에 저작권 서문이 있어 GitHub 자동 감지는 NOASSERTION)",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "openbb",
+      "version": "5.0.0",
+      "uploaded": "2026-09-29",
+      "url": "https://pypi.org/project/openbb/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "예(공급자별 커버리지)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "없음(데이터 인프라)",
+    "performance_claims": "없음",
+    "adoption_effort": "pip install openbb(5.0.0). 공급자별 API 키·약관 별도. 거버넌스 전환기: openbb.co 공지(2026-08-25 게시, 10-01 수정)상 비영리 OpenBQ(BrightQuery 주도, OpenBB 팀 1/3 고용)가 관리, 저장소는 2026-09-11 생성된 미인증 org `openbq-org`로 이전(같은 repo id 323048702), Workspace 코드는 FINOS 제안",
+    "fit_for_owner": "하",
+    "fit_reason": "소유자는 이미 Yahoo 시세 경로가 있고, 관리 주체가 바뀌는 중이라 새로 의존을 늘릴 이유가 약함",
+    "sources": [
+      "https://api.github.com/repos/OpenBB-finance/OpenBB",
+      "https://raw.githubusercontent.com/openbq-org/OpenBB/develop/README.md",
+      "https://pypi.org/pypi/openbb/json",
+      "https://openbb.co",
+      "https://api.github.com/orgs/openbq-org",
+      "https://raw.githubusercontent.com/openbq-org/OpenBB/develop/LICENSE"
+    ]
+  },
+  {
+    "full_name": "microsoft/qlib",
+    "url": "https://github.com/microsoft/qlib",
+    "category": "LLM/AI 에이전트 투자 / 백테스트·리서치 프레임워크",
+    "purpose": "데이터·ML 모델·포트폴리오 전략·평가를 잇는 AI 퀀트 연구 플랫폼(RD-Agent 연계)",
+    "stars": 49818,
+    "forks": 7868,
+    "created_at": "2020-08-14T06:46:00Z",
+    "last_push": "2026-10-30T05:12:38Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "pyqlib",
+      "version": "0.9.7",
+      "uploaded": "2025-08-15",
+      "url": "https://pypi.org/project/pyqlib/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예. README 예시가 비용 전/후 초과수익을 따로 출력",
+      "lookahead": "학습/검증/테스트 구간 분리 워크플로. 공식 데이터셋은 일시 중단, 커뮤니티 데이터 사용 안내"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "브로커 주문 연동 없음(온라인 서빙 개념만)"
+    },
+    "us_stocks_etfs": "미국·중국 데이터셋(Alpha158/360). 단일 ETF 타이밍용은 아님",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "Alpha158/Alpha360 팩터, LightGBM 등 모델 zoo, TopkDropout 포트폴리오",
+    "performance_claims": "[README 예시 출력] 벤치마크 대비 연환산 초과수익 비용 전 0.178316, 비용 후 0.128982 — 특정 예시이며 보장 수익 아님, 재현 안 함",
+    "adoption_effort": "설치·데이터 준비 부담 큼. PyPI 최신 릴리스 0.9.7(2025-08-15)로 main과 릴리스 차이 있음, 미릴리스 breaking change 안내",
+    "fit_for_owner": "하",
+    "fit_reason": "횡단면 종목선택 ML 연구용이라 단일 지수 ETF 추세추종에는 과함",
+    "sources": [
+      "https://api.github.com/repos/microsoft/qlib",
+      "https://raw.githubusercontent.com/microsoft/qlib/main/README.md",
+      "https://pypi.org/pypi/pyqlib/json"
+    ]
+  },
+  {
+    "full_name": "AI4Finance-Foundation/FinRobot",
+    "url": "https://github.com/AI4Finance-Foundation/FinRobot",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "LLM 기반 금융 리서치 에이전트. V2는 Python 계산(DCF/DDM 등)+LLM 서술 보고서, Desktop v0.1.0(macOS Apple Silicon)",
+    "stars": 8334,
+    "forks": 1405,
+    "created_at": "2024-02-27T02:30:30Z",
+    "last_push": "2026-10-24T13:58:26Z",
+    "primary_language": "Python",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음. README 면책: 실매매 권고 아님"
+    },
+    "us_stocks_etfs": "미국 기업 리서치(yfinance·SEC·FMP 등)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "기업 가치평가 보고서, FinGPT forecaster 노트북",
+    "performance_claims": "없음(\"production\"은 투자성과 인증이 아님)",
+    "adoption_effort": "Desktop 배포본 또는 소스 실행. LLM 키·데이터 키 별도",
+    "fit_for_owner": "하",
+    "fit_reason": "개별기업 보고서 생성기로 ETF 규칙 전략과 무관",
+    "sources": [
+      "https://api.github.com/repos/AI4Finance-Foundation/FinRobot",
+      "https://raw.githubusercontent.com/AI4Finance-Foundation/FinRobot/master/README.md"
+    ]
+  },
+  {
+    "full_name": "AI4Finance-Foundation/FinGPT",
+    "url": "https://github.com/AI4Finance-Foundation/FinGPT",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "금융 감성분석용 LLM 미세조정·데이터셋·벤치마크 프로젝트",
+    "stars": 21487,
+    "forks": 3039,
+    "created_at": "2023-02-11T20:21:34Z",
+    "last_push": "2026-10-25T13:49:15Z",
+    "primary_language": "Jupyter Notebook",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "뉴스 감성 위주(매매 기능 아님)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "FinGPT-Forecaster(뉴스+재무 기반 예측 데모)",
+    "performance_claims": "Weighted F1 등 문장분류 지표(매매 수익률 아님). README 뉴스의 마지막 모델 릴리스는 2023-11",
+    "adoption_effort": "GPU·모델 가중치 필요",
+    "fit_for_owner": "하",
+    "fit_reason": "NLP 부품 연구용이며 README상 신규 모델 릴리스가 2023년에 멈춤",
+    "sources": [
+      "https://api.github.com/repos/AI4Finance-Foundation/FinGPT",
+      "https://raw.githubusercontent.com/AI4Finance-Foundation/FinGPT/master/README.md"
+    ]
+  },
+  {
+    "full_name": "HKUDS/Vibe-Trading",
+    "url": "https://github.com/HKUDS/Vibe-Trading",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "자연어 질의→데이터 로딩→전략 생성→백테스트→보고서→(선택) 브로커 연결까지 잇는 LLM 트레이딩 에이전트 작업공간",
+    "stars": 37174,
+    "forks": 6001,
+    "created_at": "2026-04-01T09:52:20Z",
+    "last_push": "2026-10-30T03:45:49Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "vibe-trading-ai",
+      "version": "0.1.18",
+      "uploaded": "2026-10-21",
+      "url": "https://pypi.org/project/vibe-trading-ai/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "시장별 엔진에 비용 반영: KoreaEquity(롱 전용, 체결 시점 ±30% 가격제한, 2026 거래세 0.20%), GlobalEquity(시장별 호가단위·비용), Crypto(펀딩), Monte Carlo/Bootstrap/Walk-Forward 검증",
+      "lookahead": "알파 zoo 478개를 연산자 계층에서 룩어헤드 금지, 300행 룩어헤드 sentinel 테스트. LLM 생성 전략 자체의 기억 누출은 별개 위험"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Alpaca·Futu·Tiger·OKX·Binance·eToro·MT5: 조회+모의+제한적 실거래 / Robinhood: 실거래 전용 / IBKR: 조회 전용 / KIS(한국투자): 조회+모의투자, 실주문 미연결(국내주식) / 토스증권: 조회 전용"
+    },
+    "us_stocks_etfs": "예(Yahoo·stooq·Alpaca 등 29개 데이터 소스 fallback)",
+    "korean_broker_support": "KIS 조회·모의투자(KOSPI/KOSDAQ), 토스증권 조회 전용. KRX 일봉은 pykrx",
+    "builtin_strategies": "30개 에이전트 팀 프리셋(투자위원회·퀀트 데스크 등), Qlib Alpha158·Alpha101·GTJA191 등 알파 zoo, 자연어 전략 초안",
+    "performance_claims": "README에서 수익률 주장 확인 안 됨. README 경고: 사칭 토큰/X 계정 존재",
+    "adoption_effort": "Docker/로컬/MCP 설치. LLM 키 필요. 변경 속도가 매우 빠름(릴리스당 수백 커밋, 매일 미릴리스 변경) → 버전 고정·업그레이드 부담 큼",
+    "fit_for_owner": "하",
+    "fit_reason": "한국 시장 인식은 인기 LLM 도구 중 가장 높지만, KIS 연결은 국내주식·모의투자 한정이고 규모·변경 속도가 커서 하루 1회 QLD 규칙 운용엔 과함(관찰 대상)",
+    "sources": [
+      "https://api.github.com/repos/HKUDS/Vibe-Trading",
+      "https://raw.githubusercontent.com/HKUDS/Vibe-Trading/main/README.md",
+      "https://pypi.org/pypi/vibe-trading-ai/json"
+    ]
+  },
+  {
+    "full_name": "ZhuLinsen/daily_stock_analysis",
+    "url": "https://github.com/ZhuLinsen/daily_stock_analysis",
+    "category": "LLM/AI 에이전트 투자",
+    "purpose": "관심종목을 LLM으로 매일 분석해 \"결정 대시보드\"를 메신저·메일로 푸시하는 시스템(GitHub Actions로 무료 정기 실행)",
+    "stars": 67275,
+    "forks": 55744,
+    "created_at": "2026-01-10T06:43:20Z",
+    "last_push": "2026-10-25T13:40:20Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "비용 없음: 과거 AI 판단을 사후 채점(14일 경과 기록, 10거래일 창, ±2% 중립대로 방향 적중 평가). 별도로 LLM 미사용 ETF 순환 규칙 백테스트(--etf-rotation) 존재",
+      "lookahead": "과거 재생이 아니라 실제 발행 후 채점이라 LLM 기억 누출은 없으나 누적에 시간이 걸리고 손익 백테스트가 아님"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "주문 없음(Futu 보유종목 읽기만)"
+    },
+    "us_stocks_etfs": "예(YFinance, Longbridge)",
+    "korean_broker_support": "없음. 한국 종목은 yfinance 접미사(.KS/.KQ) 분석만 지원",
+    "builtin_strategies": "이동평균·추세·파동 등 15종 내장 분석 프롬프트, 결정 대시보드",
+    "performance_claims": "README에 arXiv 2608.26990 배지가 있으나 내용 미확인. 수익률 주장 없음",
+    "adoption_effort": "Fork 후 GitHub Secrets에 LLM·검색·알림 키 등록. README에 제휴(aff/utm) 링크 다수",
+    "popularity_note": "포크 수가 별의 약 83%: README가 \"Fork 후 Actions 배포\"를 기본 경로로 안내하고 Star를 요청하므로 인기 지표가 실사용 이상으로 부풀려졌을 수 있음",
+    "fit_for_owner": "하",
+    "fit_reason": "중국 시장 중심의 종목 코멘트 푸시 도구이고 매매 실행·손익 백테스트가 없음",
+    "sources": [
+      "https://api.github.com/repos/ZhuLinsen/daily_stock_analysis",
+      "https://raw.githubusercontent.com/ZhuLinsen/daily_stock_analysis/main/README.md",
+      "https://raw.githubusercontent.com/ZhuLinsen/daily_stock_analysis/main/docs/full-guide.md",
+      "https://raw.githubusercontent.com/ZhuLinsen/daily_stock_analysis/main/docs/market-support.md"
+    ]
+  },
+  {
+    "full_name": "mementum/backtrader",
+    "url": "https://github.com/mementum/backtrader",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "이벤트 기반 Python 백테스트·라이브 트레이딩 라이브러리(고전 표준)",
+    "stars": 23617,
+    "forks": 5313,
+    "created_at": "2015-01-10T07:14:52Z",
+    "last_push": "2024-08-19T17:47:36Z",
+    "primary_language": "Python",
+    "license_github": "GPL-3.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "backtrader",
+      "version": "1.9.78.123",
+      "uploaded": "2023-04-19",
+      "url": "https://pypi.org/project/backtrader/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: 수수료 체계, 슬리피지, 거래량 체결 전략, 다양한 주문유형",
+      "lookahead": "기본은 다음 봉 체결. Cheat-on-Close/Open 모드를 켜면 낙관 편향 가능(명시적 옵션)"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Interactive Brokers(IbPy, PyPI 미등록), Oanda, Visual Chart"
+    },
+    "us_stocks_etfs": "예",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "SMA 크로스오버 샘플, 내장 지표 122개, Analyzer(Sharpe, SQN 등)",
+    "performance_claims": "없음",
+    "adoption_effort": "설치 쉬움. 그러나 마지막 push 2024-08, PyPI 마지막 릴리스 2023-04 → 사실상 유지보수 중단, 최신 pandas/Python 호환 위험",
+    "fit_for_owner": "하",
+    "fit_reason": "기능은 충분하나 유지보수가 멈춰 장기 운용 기반으로 부적합",
+    "sources": [
+      "https://api.github.com/repos/mementum/backtrader",
+      "https://raw.githubusercontent.com/mementum/backtrader/master/README.rst",
+      "https://pypi.org/pypi/backtrader/json"
+    ]
+  },
+  {
+    "full_name": "polakowo/vectorbt",
+    "url": "https://github.com/polakowo/vectorbt",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "NumPy/Numba(선택적 Rust) 기반 벡터화 백테스트·대량 파라미터 스윕 도구(오픈소스 커뮤니티판, 유료 PRO 별도)",
+    "stars": 9586,
+    "forks": 1235,
+    "created_at": "2017-11-14T11:56:32Z",
+    "last_push": "2026-10-28T19:18:42Z",
+    "primary_language": "Python",
+    "license_github": "NOASSERTION",
+    "license_note": "Apache-2.0 + Commons Clause(소프트웨어 판매·유료 서비스 금지)",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "vectorbt",
+      "version": "1.2.0",
+      "uploaded": "2026-10-19",
+      "url": "https://pypi.org/project/vectorbt/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: fees(%), fixed_fees, slippage 파라미터",
+      "lookahead": "주의: from_signals 기본 price=np.inf → 당일 종가 체결(enums.py 문서). 신호를 같은 종가로 계산하면 낙관 편향 → 사용자가 shift 필요. Walk-forward 도구 있음"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음(스케줄링·Telegram 알림만)"
+    },
+    "us_stocks_etfs": "예(yfinance 등)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "이중 SMA 크로스오버, 보유 전략 예시, TA-Lib/Pandas TA 연동",
+    "performance_claims": "README의 BTC 예시 수치는 데모 출력이며 성과 주장 아님",
+    "adoption_effort": "pip 설치. 라이선스가 Apache-2.0 + Commons Clause(판매 금지)라 GitHub 감지 NOASSERTION",
+    "fit_for_owner": "중",
+    "fit_reason": "5개 이동평균 기간·임계값 견고성 스윕에 빠르지만 종가 체결 기본값과 Commons Clause를 의식해야 함",
+    "sources": [
+      "https://api.github.com/repos/polakowo/vectorbt",
+      "https://raw.githubusercontent.com/polakowo/vectorbt/master/README.md",
+      "https://pypi.org/pypi/vectorbt/json",
+      "https://raw.githubusercontent.com/polakowo/vectorbt/master/LICENSE.md",
+      "https://raw.githubusercontent.com/polakowo/vectorbt/master/vectorbt/portfolio/enums.py"
+    ]
+  },
+  {
+    "full_name": "kernc/backtesting.py",
+    "url": "https://github.com/kernc/backtesting.py",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "단일 종목 OHLC 기반의 가볍고 문서화가 잘 된 Python 백테스트 라이브러리",
+    "stars": 9162,
+    "forks": 1571,
+    "created_at": "2019-01-02T03:11:32Z",
+    "last_push": "2026-08-05T12:39:16Z",
+    "primary_language": "Python",
+    "license_github": "AGPL-3.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "backtesting",
+      "version": "0.6.6",
+      "uploaded": "2026-07-22",
+      "url": "https://pypi.org/project/backtesting/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: commission(비율 또는 고정+비율), spread",
+      "lookahead": "기본 trade_on_close=False → 시장가 주문은 다음 봉 시가 체결(소스 확인). True면 당일 종가 체결"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "예(OHLC 데이터만 있으면 무엇이든)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "SmaCross 예시, 조합형 기본 전략 라이브러리, SAMBO 최적화",
+    "performance_claims": "README GOOG 예시(수익 589%, 보유 703%)는 데모 출력",
+    "adoption_effort": "pip 한 줄. 라이선스 AGPL-3.0(개인 사용은 무방, 서비스 배포 시 소스 공개 의무)",
+    "fit_for_owner": "중",
+    "fit_reason": "소유자 전략을 짧게 재구현해 체결 시점(종가 vs 다음날 시가) 민감도를 독립 확인하기 좋으나 단일 종목·Python",
+    "sources": [
+      "https://api.github.com/repos/kernc/backtesting.py",
+      "https://raw.githubusercontent.com/kernc/backtesting.py/master/README.md",
+      "https://pypi.org/pypi/backtesting/json",
+      "https://raw.githubusercontent.com/kernc/backtesting.py/master/backtesting/backtesting.py"
+    ]
+  },
+  {
+    "full_name": "stefan-jansen/zipline-reloaded",
+    "url": "https://github.com/stefan-jansen/zipline-reloaded",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "Quantopian Zipline 이벤트 기반 백테스터의 커뮤니티 유지판",
+    "stars": 1993,
+    "forks": 341,
+    "created_at": "2021-02-25T06:26:03Z",
+    "last_push": "2026-10-26T19:11:55Z",
+    "primary_language": "Python",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "zipline-reloaded",
+      "version": "3.2.1",
+      "uploaded": "2026-10-25",
+      "url": "https://pypi.org/project/zipline-reloaded/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에 미기재(이번 조사에서 문서 미확인)",
+      "lookahead": "이벤트 기반 data.history 접근"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "예(데이터 번들 직접 준비)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "이중 이동평균 예시",
+    "performance_claims": "없음",
+    "adoption_effort": "README: 버그·보안·호환 수정만 유지, 신규 개발은 ML4T Backtest로 이동하며 신규 프로젝트엔 그쪽 권장. 데이터 번들 설정 부담",
+    "fit_for_owner": "하",
+    "fit_reason": "공식적으로 유지 모드이고 신규 사용은 후속 라이브러리를 권장함",
+    "sources": [
+      "https://api.github.com/repos/stefan-jansen/zipline-reloaded",
+      "https://raw.githubusercontent.com/stefan-jansen/zipline-reloaded/main/README.md",
+      "https://pypi.org/pypi/zipline-reloaded/json"
+    ]
+  },
+  {
+    "full_name": "pmorissette/bt",
+    "url": "https://github.com/pmorissette/bt",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "알고리즘 블록(스케줄·선택·비중·리밸런싱)을 조합하는 포트폴리오 비중 기반 백테스트 라이브러리(ffn 통계)",
+    "stars": 3012,
+    "forks": 509,
+    "created_at": "2014-06-19T16:06:28Z",
+    "last_push": "2026-10-25T22:27:22Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "bt",
+      "version": "1.4.1",
+      "uploaded": "2026-10-10",
+      "url": "https://pypi.org/project/bt/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: 수수료·거래비용 모델 설정 가능(README)",
+      "lookahead": "README에 별도 설명 없음. 가격 DataFrame 시점 기준 리밸런싱이므로 신호 지연(전일 종가 신호 등)은 사용자 책임(추정)"
+    },
+    "live_trading": {
+      "supported": false,
+      "brokers_exchanges": "없음"
+    },
+    "us_stocks_etfs": "예(가격 DataFrame 입력)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "동일가중 월간 리밸런싱, 모멘텀, 리스크 배분, 채권 예시, 중첩 전략 트리",
+    "performance_claims": "없음(README: 결과는 데이터·가정에 의존)",
+    "adoption_effort": "pip 한 줄, MIT, 2026-10 릴리스로 활발",
+    "fit_for_owner": "상",
+    "fit_reason": "\"QLD 비중 = 5개 MA 중 위에 있는 비율\" 같은 목표비중 리밸런싱 구조와 같아 독립 재구현·교차검증 비용이 가장 낮음",
+    "sources": [
+      "https://api.github.com/repos/pmorissette/bt",
+      "https://raw.githubusercontent.com/pmorissette/bt/master/README.md",
+      "https://pypi.org/pypi/bt/json"
+    ]
+  },
+  {
+    "full_name": "QuantConnect/Lean",
+    "url": "https://github.com/QuantConnect/Lean",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "C#/Python 이벤트 기반 알고리즘 트레이딩 엔진(QuantConnect 클라우드의 오픈소스 코어) + Lean CLI",
+    "stars": 22299,
+    "forks": 5355,
+    "created_at": "2014-11-28T04:20:19Z",
+    "last_push": "2026-10-30T00:01:04Z",
+    "primary_language": "C#",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "lean",
+      "version": "1.0.233",
+      "uploaded": "2026-10-27",
+      "url": "https://pypi.org/project/lean/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: 수수료·슬리피지·체결·브로커리지 \"reality models\"(공식 문서)",
+      "lookahead": "이벤트 기반 시간 흐름"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "공식 문서 목록: QC Paper, Interactive Brokers, TradeStation, Tastytrade, Public, Alpaca, Charles Schwab, Clear Street, Webull, Binance, Bybit, Tradier, Kraken, Coinbase, Bitfinex, dYdX, Bloomberg EMSX, SSC Eze, Trading Technologies, Samco, Zerodha"
+    },
+    "us_stocks_etfs": "예",
+    "korean_broker_support": "직접 지원 없음. 단 한국투자증권 공식 backtester가 Lean 엔진(Docker)을 사용",
+    "builtin_strategies": "저장소에 C#/Python 예제 알고리즘 다수(README 링크)",
+    "performance_claims": "없음",
+    "adoption_effort": "Docker + Lean CLI 권장, 로컬은 .NET 10. 로컬 데이터 직접 준비 또는 QC 클라우드 데이터(유료). 학습 곡선 큼",
+    "fit_for_owner": "중",
+    "fit_reason": "비용·체결 모델이 가장 엄밀하지만 하루 1회 ETF 규칙에는 무겁고 한국 증권사 실행은 KIS 저장소를 거쳐야 함",
+    "sources": [
+      "https://api.github.com/repos/QuantConnect/Lean",
+      "https://raw.githubusercontent.com/QuantConnect/Lean/master/readme.md",
+      "https://pypi.org/pypi/lean/json",
+      "https://www.quantconnect.com/docs/v2/lean-cli/live-trading/brokerages",
+      "https://www.quantconnect.com/docs/v2/writing-algorithms/reality-modeling/key-concepts"
+    ]
+  },
+  {
+    "full_name": "nautechsystems/nautilus_trader",
+    "url": "https://github.com/nautechsystems/nautilus_trader",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "Rust 코어 + Python 제어의 고성능 이벤트 기반 백테스트·라이브 엔진(동일 코드로 연구→실거래)",
+    "stars": 31054,
+    "forks": 4183,
+    "created_at": "2018-06-25T06:26:16Z",
+    "last_push": "2026-10-30T05:16:07Z",
+    "primary_language": "Rust",
+    "license_github": "LGPL-3.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "nautilus_trader",
+      "version": "1.231.0",
+      "uploaded": "2026-08-02",
+      "url": "https://pypi.org/project/nautilus_trader/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "예: fill model(슬리피지·확률 체결), MakerTakerFeeModel(문서)",
+      "lookahead": "나노초 이벤트 시뮬레이션. 문서에 \"다음 봉 시가 체결과 룩어헤드\" 경고 절 있음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Interactive Brokers, Binance, Bybit, Coinbase, Kraken, OKX, Deribit, dYdX, Hyperliquid, Betfair, Polymarket 등(데이터: Databento, Tardis)"
+    },
+    "us_stocks_etfs": "예(IB 경유)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "예제 전략(마켓메이킹·크로스 venue 등), RL 학습용 속도 강조",
+    "performance_claims": "없음",
+    "adoption_effort": "v2(Rust 네이티브) 전환 중, v1은 보안 백포트만. MSRV=최신 Rust. 학습 곡선 매우 큼",
+    "fit_for_owner": "하",
+    "fit_reason": "고빈도·다중 venue용 엔진이라 하루 1회 QLD 비중 조정에는 과함",
+    "sources": [
+      "https://api.github.com/repos/nautechsystems/nautilus_trader",
+      "https://raw.githubusercontent.com/nautechsystems/nautilus_trader/develop/README.md",
+      "https://pypi.org/pypi/nautilus_trader/json",
+      "https://raw.githubusercontent.com/nautechsystems/nautilus_trader/develop/docs/concepts/backtesting/index.md",
+      "https://raw.githubusercontent.com/nautechsystems/nautilus_trader/develop/docs/concepts/backtesting/bar-execution.md"
+    ]
+  },
+  {
+    "full_name": "AI4Finance-Foundation/FinRL",
+    "url": "https://github.com/AI4Finance-Foundation/FinRL",
+    "category": "백테스트·리서치 프레임워크",
+    "purpose": "심층강화학습(DRL) 기반 금융 매매 프레임워크(교육·연구용, 실거래는 후속 FinRL-X/FinRL-Trading 안내)",
+    "stars": 16880,
+    "forks": 3605,
+    "created_at": "2020-07-26T13:18:16Z",
+    "last_push": "2026-10-25T13:49:47Z",
+    "primary_language": "Jupyter Notebook",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "finrl",
+      "version": "0.3.7",
+      "uploaded": "2024-04-12",
+      "url": "https://pypi.org/project/finrl/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에서 비용 파라미터 미확인",
+      "lookahead": "2026 튜토리얼: 학습 2014–2025, 거래 2026-01-01~03-20 분리"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "기본 Alpaca 지원(README). 본격 실거래는 FinRL-Trading"
+    },
+    "us_stocks_etfs": "예(Yahoo, Alpaca 데이터)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "A2C·DDPG·PPO·SAC·TD3(Stable-Baselines3), DOW30 예제",
+    "performance_claims": "README에 성과 수치 주장 없음(논문 다수)",
+    "adoption_effort": "PyPI 최신 0.3.7(2024-04)로 릴리스 정체, 노트북 중심",
+    "fit_for_owner": "하",
+    "fit_reason": "RL은 과적합 위험이 크고 규칙형 추세추종을 대체할 근거가 없음",
+    "sources": [
+      "https://api.github.com/repos/AI4Finance-Foundation/FinRL",
+      "https://raw.githubusercontent.com/AI4Finance-Foundation/FinRL/master/README.md",
+      "https://pypi.org/pypi/finrl/json"
+    ]
+  },
+  {
+    "full_name": "freqtrade/freqtrade",
+    "url": "https://github.com/freqtrade/freqtrade",
+    "category": "라이브 트레이딩 봇",
+    "purpose": "암호화폐 전용 오픈소스 매매 봇(Telegram/웹 UI, 백테스트·최적화·FreqAI)",
+    "stars": 56143,
+    "forks": 11613,
+    "created_at": "2017-05-17T23:48:53Z",
+    "last_push": "2026-10-30T05:36:59Z",
+    "primary_language": "Python",
+    "license_github": "GPL-3.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "freqtrade",
+      "version": "2026.9",
+      "uploaded": "2026-09-29",
+      "url": "https://pypi.org/project/freqtrade/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에서 비용·슬리피지 설명 미확인",
+      "lookahead": "lookahead-analysis·recursive-analysis 진단 명령 제공"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Binance, Bitget, Bybit, Gate, HTX, Hyperliquid, Kraken, OKX 등(현물·선물)"
+    },
+    "us_stocks_etfs": "아니오(암호화폐 전용)",
+    "korean_broker_support": "없음(한국 거래소 공식 지원 목록에 없음)",
+    "builtin_strategies": "사용자 전략 템플릿, hyperopt, FreqAI 적응형 ML",
+    "performance_claims": "없음",
+    "adoption_effort": "Docker/로컬. 거래소 API 키",
+    "fit_for_owner": "하",
+    "fit_reason": "암호화폐 전용이라 QLD/미국 ETF에 쓸 수 없음",
+    "sources": [
+      "https://api.github.com/repos/freqtrade/freqtrade",
+      "https://raw.githubusercontent.com/freqtrade/freqtrade/develop/README.md",
+      "https://pypi.org/pypi/freqtrade/json"
+    ]
+  },
+  {
+    "full_name": "jesse-ai/jesse",
+    "url": "https://github.com/jesse-ai/jesse",
+    "category": "라이브 트레이딩 봇",
+    "purpose": "암호화폐 알고리즘 매매 프레임워크(연구·백테스트·최적화·라이브)",
+    "stars": 8738,
+    "forks": 1275,
+    "created_at": "2018-11-09T10:38:44Z",
+    "last_push": "2026-10-29T17:07:49Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "jesse",
+      "version": "3.5.3",
+      "uploaded": "2026-10-26",
+      "url": "https://pypi.org/project/jesse/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에서 비용 모델 미확인",
+      "lookahead": "README: 다중 타임프레임/심볼 \"look-ahead bias 없이\" 백테스트(작성자 설명). Monte Carlo로 과적합 점검"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "암호화폐 거래소(README에 개별 목록 없음, 현물·선물)"
+    },
+    "us_stocks_etfs": "아니오(암호화폐 전용)",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "GoldenCross 예시, 300+ 지표, Optuna 최적화, 내장 ML 파이프라인, Jesse MCP",
+    "performance_claims": "없음",
+    "adoption_effort": "자체 호스팅 웹 UI. 라이브 기능 조건은 미확인",
+    "fit_for_owner": "하",
+    "fit_reason": "암호화폐 전용",
+    "sources": [
+      "https://api.github.com/repos/jesse-ai/jesse",
+      "https://raw.githubusercontent.com/jesse-ai/jesse/master/README.md",
+      "https://pypi.org/pypi/jesse/json"
+    ]
+  },
+  {
+    "full_name": "hummingbot/hummingbot",
+    "url": "https://github.com/hummingbot/hummingbot",
+    "category": "라이브 트레이딩 봇",
+    "purpose": "CEX/DEX 대상 고빈도·마켓메이킹 암호화폐 봇 프레임워크(Condor AI 하네스)",
+    "stars": 20806,
+    "forks": 5070,
+    "created_at": "2019-04-02T21:41:52Z",
+    "last_push": "2026-10-20T03:18:44Z",
+    "primary_language": "Python",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "hummingbot",
+      "version": "20260922",
+      "uploaded": "2026-10-07",
+      "url": "https://pypi.org/project/hummingbot/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "README에서 백테스트 기능 미확인(바이낸스 시세 기반 모의매매만 확인)",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Binance 등 다수 CEX/DEX(README \"140+ venues\")"
+    },
+    "us_stocks_etfs": "아니오",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "simple_pmm 마켓메이킹 스크립트, V2 controller(pmm_mister 등)",
+    "performance_claims": "[운영사 주장] 지난 1년 사용자 거래량 340억 달러 이상, 140+ venue — 수익률이 아닌 거래량 지표",
+    "adoption_effort": "Docker 권장, 거래소 키 암호화 저장",
+    "fit_for_owner": "하",
+    "fit_reason": "암호화폐 마켓메이킹 전용",
+    "sources": [
+      "https://api.github.com/repos/hummingbot/hummingbot",
+      "https://raw.githubusercontent.com/hummingbot/hummingbot/master/README.md",
+      "https://pypi.org/pypi/hummingbot/json"
+    ]
+  },
+  {
+    "full_name": "Drakkar-Software/OctoBot",
+    "url": "https://github.com/Drakkar-Software/OctoBot",
+    "category": "라이브 트레이딩 봇",
+    "purpose": "시각적 UI의 암호화폐 매매 봇(그리드·DCA·바스켓·TradingView·AI 커넥터)",
+    "stars": 6873,
+    "forks": 1313,
+    "created_at": "2018-02-23T23:13:05Z",
+    "last_push": "2026-10-27T12:29:50Z",
+    "primary_language": "Python",
+    "license_github": "GPL-3.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "octobot",
+      "version": "2.1.1",
+      "uploaded": "2026-03-29",
+      "url": "https://pypi.org/project/octobot/"
+    },
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "README에서 비용 모델 미확인",
+      "lookahead": "미확인"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "Binance, Coinbase, MEXC, Hyperliquid 등 15+ 거래소"
+    },
+    "us_stocks_etfs": "아니오",
+    "korean_broker_support": "없음",
+    "builtin_strategies": "그리드, DCA, 크립토 바스켓, OpenAI/Ollama AI 커넥터, TradingView 신호",
+    "performance_claims": "없음",
+    "adoption_effort": "노드 모드 기본, 클라우드 유료 상품 유도(utm 링크). PyPI 최신 2.1.1(2026-03)",
+    "fit_for_owner": "하",
+    "fit_reason": "암호화폐 전용",
+    "sources": [
+      "https://api.github.com/repos/Drakkar-Software/OctoBot",
+      "https://raw.githubusercontent.com/Drakkar-Software/OctoBot/master/README.md",
+      "https://pypi.org/pypi/octobot/json"
+    ]
+  },
+  {
+    "full_name": "koreainvestment/open-trading-api",
+    "url": "https://github.com/koreainvestment/open-trading-api",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "한국투자증권 KIS Open API 공식 샘플 저장소(LLM용 기능별 샘플, 사용자용 통합 예제, 전략 빌더, Lean 기반 백테스터)",
+    "stars": 1656,
+    "forks": 835,
+    "created_at": "2022-04-08T03:51:49Z",
+    "last_push": "2026-10-27T15:26:12Z",
+    "primary_language": "Python",
+    "license_github": null,
+    "license_note": "라이선스 파일 미감지(GitHub license=null)",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "backtester/ README에서 수수료·세금 설정 설명 미확인. Lean 엔진 사용",
+      "lookahead": "Lean 이벤트 기반. 데이터 수집 시 모의투자 키는 시세 누락 가능 → 실전 키 권장(문서)"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "한국투자증권: 국내주식·채권·선물옵션·ETF/ETN·해외주식·해외선물옵션 주문/시세/잔고(REST+WebSocket), 모의투자 환경"
+    },
+    "us_stocks_etfs": "해외주식 주문·시세 샘플(overseas_stock). 단 backtester는 KRX 데이터·KOSPI 벤치마크 기준(미국 백테스트 미확인)",
+    "korean_broker_support": "예(공식)",
+    "builtin_strategies": "10개 프리셋(SMA 골든/데드크로스, 모멘텀, 52주 신고가, 이격도, 변동성 돌파 등), .kis.yaml 전략 포맷",
+    "performance_claims": "없음",
+    "adoption_effort": "KIS 계좌·App Key/Secret. Python 3.11+ uv, 백테스터는 Docker+Node. 2026-10-23부터 KIS Developers 웹에 AI 에이전트·투자전략 플레이그라운드 추가. GitHub 라이선스 감지 없음(재사용 조건 불명확)",
+    "fit_for_owner": "상",
+    "fit_reason": "KIS 계좌라면 QLD 장마감 주문 자동화에 쓸 공식 REST 레퍼런스이며 최근까지 활발히 갱신됨(언어 무관 REST라 TS에서도 참고 가능)",
+    "sources": [
+      "https://api.github.com/repos/koreainvestment/open-trading-api",
+      "https://raw.githubusercontent.com/koreainvestment/open-trading-api/main/README.md",
+      "https://raw.githubusercontent.com/koreainvestment/open-trading-api/main/backtester/README.md"
+    ]
+  },
+  {
+    "full_name": "koreainvestment/kis-ai-extensions",
+    "url": "https://github.com/koreainvestment/kis-ai-extensions",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "KIS Open API를 Claude Code·Cursor·Codex·Gemini CLI에서 자연어로 쓰게 하는 공식 플러그인(npm @koreainvestment/kis-quant-plugin)과 MCP 서버",
+    "stars": 218,
+    "forks": 42,
+    "created_at": "2026-03-31T05:29:17Z",
+    "last_push": "2026-06-24T07:35:36Z",
+    "primary_language": "JavaScript",
+    "license_github": null,
+    "license_note": "라이선스 파일 미감지",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "backtesting": {
+      "supported": true,
+      "costs_slippage": "open-trading-api의 Lean 백테스터 재사용(비용 설정 미확인)",
+      "lookahead": "위와 동일"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "한국투자증권 모의/실전 주문(BUY/SELL/HOLD 신호+강도 확인 후)"
+    },
+    "us_stocks_etfs": "본 저장소 README로는 미확인(백테스터는 KRX 중심)",
+    "korean_broker_support": "예(공식)",
+    "builtin_strategies": "10개 프리셋 + 80개 기술지표 조합",
+    "performance_claims": "없음",
+    "adoption_effort": "open-trading-api 클론 후 npx/bunx init. 보안 훅(appkey/token 유출 차단, 실전 주문 시 사용자 확인 강제). 마지막 push 2026-06",
+    "fit_for_owner": "중",
+    "fit_reason": "Claude Code로 KIS 조회·모의 주문을 다루기엔 편하지만 백테스터가 국내주식 중심이고 실주문 경로라 신중해야 함",
+    "sources": [
+      "https://api.github.com/repos/koreainvestment/kis-ai-extensions",
+      "https://raw.githubusercontent.com/koreainvestment/kis-ai-extensions/main/README.md"
+    ]
+  },
+  {
+    "full_name": "Soju06/python-kis",
+    "url": "https://github.com/Soju06/python-kis",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "한국투자증권 REST/WebSocket 비공식 Python 라이브러리(국내·해외 시세·주문·잔고, 복구형 웹소켓)",
+    "stars": 288,
+    "forks": 89,
+    "created_at": "2022-10-04T04:59:37Z",
+    "last_push": "2026-02-21T11:56:23Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "python-kis",
+      "version": "2.1.6",
+      "uploaded": "2025-10-13",
+      "url": "https://pypi.org/project/python-kis/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "한국투자증권(실전·모의)"
+    },
+    "us_stocks_etfs": "예(NASDAQ 등 해외주식 시세·주문, 실시간 체결)",
+    "korean_broker_support": "예(KIS)",
+    "builtin_strategies": "없음(API 래퍼)",
+    "performance_claims": "없음",
+    "adoption_effort": "pip install python-kis. 1인 메인테이너, 최신 릴리스 2.1.6(2025-10-13), 마지막 push 2026-02",
+    "fit_for_owner": "중",
+    "fit_reason": "Python으로 KIS 해외주식 주문을 짤 때 가장 편한 래퍼지만 소유자 스택(TS)과 다르고 갱신이 둔화됨",
+    "sources": [
+      "https://api.github.com/repos/Soju06/python-kis",
+      "https://raw.githubusercontent.com/Soju06/python-kis/main/README.md",
+      "https://pypi.org/pypi/python-kis/json"
+    ]
+  },
+  {
+    "full_name": "sharebook-kr/mojito",
+    "url": "https://github.com/sharebook-kr/mojito",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "한국 증권사 REST Open API 통합 Python 래퍼(실제로는 한국투자증권 중심)",
+    "stars": 92,
+    "forks": 44,
+    "created_at": "2022-04-01T14:34:00Z",
+    "last_push": "2024-02-20T13:22:59Z",
+    "primary_language": "Python",
+    "license_github": "MIT",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "mojito2",
+      "version": "0.1.6",
+      "uploaded": "2023-02-23",
+      "url": "https://pypi.org/project/mojito2/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "한국투자증권(국내 현금주문·잔고, 미국주식 지정가 예시)"
+    },
+    "us_stocks_etfs": "예(README에 NASD 거래소 TQQQ 지정가 주문 예시)",
+    "korean_broker_support": "예(KIS)",
+    "builtin_strategies": "없음",
+    "performance_claims": "없음",
+    "adoption_effort": "pip install mojito2. 마지막 push 2024-02, PyPI 마지막 릴리스 2023-02 → 정체",
+    "fit_for_owner": "하",
+    "fit_reason": "2년 넘게 갱신이 없어 KIS API 변경에 대응하지 못할 위험",
+    "sources": [
+      "https://api.github.com/repos/sharebook-kr/mojito",
+      "https://raw.githubusercontent.com/sharebook-kr/mojito/main/README.md",
+      "https://pypi.org/pypi/mojito2/json"
+    ]
+  },
+  {
+    "full_name": "sharebook-kr/pykiwoom",
+    "url": "https://github.com/sharebook-kr/pykiwoom",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "키움증권 OpenAPI+(구형 Windows COM/OCX 방식) Python 래퍼",
+    "stars": 112,
+    "forks": 57,
+    "created_at": "2018-02-05T13:36:50Z",
+    "last_push": "2025-07-09T14:55:38Z",
+    "primary_language": "Python",
+    "license_github": "Apache-2.0",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "pykiwoom",
+      "version": "0.1.6",
+      "uploaded": "2024-01-05",
+      "url": "https://pypi.org/project/pykiwoom/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "키움증권 OpenAPI+(국내주식 TR 조회 예시)"
+    },
+    "us_stocks_etfs": "README 기준 국내주식만",
+    "korean_broker_support": "예(키움, 레거시 OpenAPI+)",
+    "builtin_strategies": "없음",
+    "performance_claims": "없음",
+    "adoption_effort": "Windows 전용 OCX 환경 필요(일반 지식, README는 CommConnect 예시만). PyPI 마지막 0.1.6(2024-01). GitHub는 Apache-2.0, PyPI 메타는 MIT로 표기 불일치",
+    "fit_for_owner": "하",
+    "fit_reason": "키움이 공식 REST API를 내놓아 레거시 OCX 래퍼를 새로 채택할 이유가 없음",
+    "sources": [
+      "https://api.github.com/repos/sharebook-kr/pykiwoom",
+      "https://raw.githubusercontent.com/sharebook-kr/pykiwoom/master/README.md",
+      "https://pypi.org/pypi/pykiwoom/json"
+    ]
+  },
+  {
+    "full_name": "Kiwoom-Securities/Kiwoom-REST-API",
+    "url": "https://github.com/Kiwoom-Securities/Kiwoom-REST-API",
+    "category": "한국 증권사 라이브러리",
+    "purpose": "키움증권 공식 REST API 클라이언트·샘플·CLI(kwcli)·MCP 서버",
+    "stars": 65,
+    "forks": 23,
+    "created_at": "2025-08-26T00:20:05Z",
+    "last_push": "2026-09-15T06:12:19Z",
+    "primary_language": "Python",
+    "license_github": "NOASSERTION",
+    "license_note": "키움증권 독점 라이선스: 키움 OpenAPI 이용 목적에 한한 비독점·양도불가 사용권",
+    "archived": false,
+    "github_fetched_at": "2026-10-30T05:40:28Z",
+    "latest_pypi_release": {
+      "package": "kwcli",
+      "version": "1.0.3",
+      "uploaded": "2026-09-16",
+      "url": "https://pypi.org/project/kwcli/"
+    },
+    "backtesting": {
+      "supported": false,
+      "costs_slippage": "해당 없음",
+      "lookahead": "해당 없음"
+    },
+    "live_trading": {
+      "supported": true,
+      "brokers_exchanges": "키움증권 운영/모의(키 별도): 337개 API 스펙, Python 예제 362개(OAuth 2, 국내주식 226, 미국주식 134), WebSocket 31"
+    },
+    "us_stocks_etfs": "예(미국주식 HTTP API 121개, 예제 134개)",
+    "korean_broker_support": "예(공식)",
+    "builtin_strategies": "없음(API 클라이언트)",
+    "performance_claims": "없음",
+    "adoption_effort": "Python 3.13+, uv tool install kwcli, App Key/Secret을 OS 키체인에 저장. Claude Desktop용 .mcpb, Claude Code·Codex용 MCP 설치 스크립트. 별 65개로 인지도는 낮음(저장소 생성 2025-08-26)",
+    "fit_for_owner": "중",
+    "fit_reason": "키움 계좌라면 미국주식 주문까지 공식 지원돼 \"상\"이지만, 계좌 전제·독점 라이선스·짧은 이력 때문에 조건부",
+    "sources": [
+      "https://api.github.com/repos/Kiwoom-Securities/Kiwoom-REST-API",
+      "https://raw.githubusercontent.com/Kiwoom-Securities/Kiwoom-REST-API/main/README.md",
+      "https://pypi.org/pypi/kwcli/json",
+      "https://raw.githubusercontent.com/Kiwoom-Securities/Kiwoom-REST-API/main/LICENSE.md"
+    ]
+  }
+]

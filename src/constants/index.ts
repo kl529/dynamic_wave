@@ -83,6 +83,9 @@ export const BACKTEST = {
   
   // 최소 데이터 일수
   MIN_DAYS: 365,
+
+  // 주간 RSI 워밍업 (시작일 이전 거래일 수)
+  RSI_WARMUP_DAYS: 500,
   
   // 기본 조회 기간 (일)
   DEFAULT_PERIOD_DAYS: 90,

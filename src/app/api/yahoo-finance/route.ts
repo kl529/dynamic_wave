@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// 앱이 쓰는 종목만 허용 (임의 심볼로 프록시를 쓰지 못하게)
+const ALLOWED_SYMBOLS = new Set(['SOXL', '^NDX', 'QLD', 'QQQ', 'TQQQ', 'SPY']);
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const symbol = searchParams.get('symbol') || 'SOXL';
-  const period = searchParams.get('period') || '1d';
-  
+  const days = Number(/^(\d{1,5})d$/.exec(searchParams.get('period') || '90d')?.[1]);
+
+  if (!ALLOWED_SYMBOLS.has(symbol) || !days) {
+    return NextResponse.json({ error: 'Unsupported symbol or period' }, { status: 400 });
+  }
+
   try {
-    // Yahoo Finance API 호출
-    const interval = period.includes('d') && parseInt(period) <= 5 ? '1m' : '1d';
-    const range = period.includes('d') ? period : '90d';
-    
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
-    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${days}d&interval=1d`;
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -24,16 +27,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    
+
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        'Cache-Control': 'private, max-age=30',
       },
     });
 
   } catch (error) {
     console.error('Yahoo Finance API 호출 실패:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch market data' },
       { status: 500 }

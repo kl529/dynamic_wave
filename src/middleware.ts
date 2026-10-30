@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authToken } from '@/lib/authToken';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 로그인 페이지와 인증 API는 통과
@@ -11,7 +12,7 @@ export function middleware(request: NextRequest) {
   const authCookie = request.cookies.get('site_auth');
   const sitePassword = process.env.SITE_PASSWORD;
 
-  if (!sitePassword || authCookie?.value !== sitePassword) {
+  if (!sitePassword || authCookie?.value !== (await authToken(sitePassword))) {
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }

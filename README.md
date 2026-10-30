@@ -1,114 +1,68 @@
-# 동파법 SOXL 자동매매 시스템
+# 동파 — 매매 신호 & 검증
 
-**5분할 독립 운영 × RSI 자동 모드 전환 × 백테스팅**
+장기 복리를 목표로 한 개인 매매 시스템. 매일 장 마감 후 앱을 열어 **다음 정규장에 할 일**을 확인한다.
 
-> SOXL (반도체 3배 레버리지 ETF) 전용 자동매매 전략 시스템
+## 지금 쓰는 전략 (2026-10-30 결정)
 
-[![Next.js](https://img.shields.io/badge/Next.js-14.0-black?logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![Ant Design](https://img.shields.io/badge/Ant_Design-5.0-0170FE?logo=ant-design)](https://ant.design/)
+**나스닥100 2배(QLD) 추세 앙상블.** ^NDX 종가가 이동평균 100·150·200·250·300일 중 몇 개 위에 있는지의 비율(0~100%)만큼 QLD를 보유하고, 나머지는 현금으로 둔다. 비중은 신호 다음 정규장 종가에 맞춘다.
 
----
+| 1995~2026, 세후 | 연복리 | 최대 낙폭 |
+|---|---|---|
+| QLD 추세 앙상블 100% | 18.0% | -77% (2000~2003, 2014년 회복) |
+| 전략 50% + S&P500 50% (기본 제안) | 15.8% | -62% |
+| S&P500 보유 | 10.2% | -55% |
+| 동파법 SOXL (기존 전략) | 5.0% | -37% |
+| SOXL 보유 | -7.5% | -100% |
 
-## 현재 전략 파라미터 (v3 — 2026-04-04 기준)
+왜 이 전략인지, 기존 동파법·하이브리드가 왜 탈락했는지, 위험은 무엇인지는 [`docs/STRATEGY.md`](./docs/STRATEGY.md)에 있다. 전체 검증 표는 [`docs/validation/results.md`](./docs/validation/results.md)다.
 
-| 항목 | 안전모드 | 공세모드 | bull모드 |
-|------|---------|---------|---------|
-| **매수 조건** | 전일 대비 **-3% 이상 하락일에만** | **-5% 이상 하락일에만** | **-3% 이상 하락일에만** |
-| **매도 목표** | 평단가 대비 **+0.8%** | **+10%** | **+10%** |
-| **최대 보유** | **30거래일** 후 강제 손절 | **10거래일** | **45거래일** |
-| 모드 전환 | Weekly RSI 기반 자동 전환 | ← | RSI 55~65 상승 구간 |
-| 기본 분할 수 | **5분할** (최적화 목표: 10분할) | ← | ← |
-| 재분할 주기 | **20거래일**마다 자산 균등 재분배 | ← | ← |
-| 수수료 | 편도 0.047% (거래세 0.044% + SEC 0.00278%) | ← | ← |
+## 앱
 
-> **권장 파라미터 (그리드 탐색 v3 결론)**: `div=10, rp=10` | safe `-4%/+0.8%/30일` | aggr `-5%/+10%/10일` | bull `-3%/+8%/45일`
+| 탭 | 내용 |
+|---|---|
+| 추천 전략 | 다음 정규장의 QLD 목표 비중, 이동평균별 위치, 보유·현금을 넣으면 주문 수량 |
+| 동파법 | SOXL 분할 현황, 주간 RSI 모드, 다음 정규장 LOC/MOC 주문표 |
+| 매매 기록 | 동파법 매매 입력·조회 (PostgreSQL) |
+| 설정 | 동파법 자본·분할 수·모드 |
+| 백테스팅 (상단 버튼) | 추천 전략(상품·이동평균·조정 주기·세금 선택)과 동파법·하이브리드 시뮬레이션 |
 
----
+사용법: [`GUIDE.md`](./GUIDE.md)
 
-## 실제 백테스팅 결과 요약
-
-### 연도별 (2010~2026, 4,041거래일)
-
-| 구간 | SOXL B&H | 동파법 | 초과수익 |
-|------|---------|--------|---------|
-| 2011 하락장 | -49% | -27.5% | **+21.9%p** |
-| 2018 하락장 | -44% | -10.1% | **+34.1%p** |
-| **2022 폭락장** | **-87%** | **-36.1%** | **+50.5%p** |
-| 2012 횡보장 | 0% | -18.6% | -18.6%p |
-| 2024 보합장 | -2.6% | -12.5% | -9.9%p |
-| 2023 강세장 | +235% | +2.5% | -232%p |
-
-**전략 포지셔닝**: B&H 대비 연간 -40% 이상 폭락 시에만 우위. 단독 수익 전략이 아닌 **폭락 방어 + 박스권 알파** 전략.
-
-> 상세 분석: [`docs/analysis-2026-04-04-v4.md`](./docs/analysis-2026-04-04-v4.md)
-
----
-
-## 기능
-
-### 오늘 매매 신호 (메인 화면)
-- 5분할(~7분할) 현황 대시보드 (보유량 / 평단가 / 평가손익)
-- 오늘 실행할 매수/매도 주문 즉시 확인
-- RSI 모드 표시 (안전 / 공세)
-- 매매 기록 수동 입력 및 Supabase 저장
-
-### 백테스팅
-- 기간 / 분할 수 / 모드 / 재분할 주기 자유 설정
-- **고급 설정**: 매도 목표 % 직접 커스텀 (기본값 오버라이드)
-- **파라미터 스윕**: 15개 조합 자동 테스트 → 최적 파라미터 탐색
-- 핵심 지표: 수익률, 연환산(CAGR), MDD, 승률, **기대값(EV)**, 손절 비율
-- 분할별 성과 테이블 + CSV 다운로드
-
----
-
-## 빠른 시작
+## 실행
 
 ```bash
 npm install
-npm run dev   # http://localhost:3000
+cp .env.example .env.local   # SITE_PASSWORD, PostgreSQL 값 입력
+npm run dev                  # http://localhost:3000
 ```
 
-환경 변수 (`.env.local`):
-```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-```
+| 명령 | 용도 |
+|---|---|
+| `npm test` | 단위·회귀 테스트 (미래 데이터 미사용, 실전↔백테스트 일치, 주문표↔엔진 일치, API 입력 검증) |
+| `npx tsc --noEmit -p .` | 타입 검사 |
+| `npm run build` | 프로덕션 빌드 |
+| `bun scripts/research/run.ts [--refresh]` | 전략 검증 전체 재실행 → `docs/validation/results.{md,json}` |
+| `bun scripts/research/tune.ts` | 파라미터 조정 검증 → `docs/validation/tuning.{md,json}` |
 
-> Supabase 설정 상세: [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md)
-
----
-
-## 기술 스택
-
-| 분류 | 기술 |
-|------|------|
-| Framework | Next.js 14 (App Router) |
-| Language | TypeScript |
-| UI | Ant Design 5 + Tailwind CSS |
-| Charts | Recharts |
-| Database | Supabase (PostgreSQL) |
-| Data | Yahoo Finance API |
-
----
+환경 변수는 [`.env.example`](./.env.example), DB와 홈랩 Docker 배포는 [`docs/DB_SETUP.md`](./docs/DB_SETUP.md)를 본다.
 
 ## 문서
 
 | 파일 | 내용 |
-|------|------|
-| [`GUIDE.md`](./GUIDE.md) | 전략 상세, 사용법, 아키텍처 |
-| [`docs/analysis-2026-04-04-v4.md`](./docs/analysis-2026-04-04-v4.md) | **2010~2026 전체 분석, 구조적 문제 진단, 개선 방향** |
-| [`docs/how-money-is-made.md`](./docs/how-money-is-made.md) | 매수/매도 수식 완전 해부, 손익분기점 |
-| [`docs/backtest-report-2026-04-04.md`](./docs/backtest-report-2026-04-04.md) | v2 vs v3 비교 백테스팅 결과 |
-| [`docs/optimization-2026-04-04.md`](./docs/optimization-2026-04-04.md) | 파라미터 그리드 탐색 v1/v2 기록 |
+|---|---|
+| [`docs/STRATEGY.md`](./docs/STRATEGY.md) | 전략 결정, 채택 기준, 결과, 위험 |
+| [`docs/validation/results.md`](./docs/validation/results.md) | 자동 생성 검증 결과 전체 |
+| [`docs/validation/tuning.md`](./docs/validation/tuning.md) | 파라미터 조정 검증 (동파법 900개 조합, 추세 민감도) |
+| [`docs/validation/crosscheck.md`](./docs/validation/crosscheck.md) | vectorbt 독립 재현 |
+| [`GUIDE.md`](./GUIDE.md) | 매일 할 일과 주문 방법 |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 코드 구조와 타이밍 규칙 |
 | [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) | 변경 이력 |
-| [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md) | Supabase 연결 설정, 테이블 생성 SQL |
+| [`docs/archive/`](./docs/archive/README.md) | 2026-04 이전 연구 (수치 무효) |
 
----
+## 기술 스택
 
-## 투자 유의사항
+Next.js 14 (App Router) · TypeScript · Ant Design 5 · Tailwind CSS · Recharts · PostgreSQL · Docker · Yahoo Finance · 검증 스크립트는 Bun
 
-- 본 시스템은 **교육 및 분석 목적**으로만 제작됨
-- SOXL은 3배 레버리지 ETF — **원금 전액 손실 가능**
-- 과거 백테스팅 결과가 미래 수익을 보장하지 않음
-- 실제 투자 결정은 전적으로 개인의 책임
+## 유의사항
+
+과거 데이터 검증이며 미래 수익을 보장하지 않는다. QLD(2배)·SOXL(3배) 같은 레버리지 ETF는 큰 손실이 날 수 있다. 투자 결정과 결과는 본인 책임이다.

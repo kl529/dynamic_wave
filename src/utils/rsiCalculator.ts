@@ -6,6 +6,7 @@
  */
 
 import { MarketData } from '@/types';
+import { nextTradingDay } from '@/lib/marketTime';
 
 export interface RSIData {
   date: string;
@@ -288,57 +289,36 @@ export function getLatestRSIMode(priceData: MarketData[]): {
 // ==================== 주간 RSI 계산 함수들 ====================
 
 /**
- * 주간 데이터 추출 (매주 금요일 종가 기준)
- * 금요일이 없으면 주의 마지막 거래일 사용
+ * 주간 데이터 추출: 각 ISO 주의 마지막 거래일 종가 (보통 금요일)
+ * 마지막 주는 진행 중일 수 있다 — 완료 여부는 호출하는 쪽이 판단한다.
  */
 export function getWeeklyData(priceData: MarketData[]): MarketData[] {
-  if (!priceData.length) return [];
-
-  // 주별로 그룹화
-  const weeks: { [key: string]: MarketData[] } = {};
-
-  for (const data of priceData) {
-    const date = new Date(data.date);
-    // ISO 주 번호 (년-주차)
-    const year = date.getFullYear();
-    const weekNum = getWeekNumber(date);
-    const weekKey = `${year}-W${weekNum.toString().padStart(2, '0')}`;
-
-    if (!weeks[weekKey]) {
-      weeks[weekKey] = [];
-    }
-    weeks[weekKey].push(data);
-  }
-
-  // 각 주의 금요일 또는 마지막 거래일 선택
   const weeklyData: MarketData[] = [];
-
-  for (const weekKey of Object.keys(weeks).sort()) {
-    const weekData = weeks[weekKey];
-
-    // 금요일(5) 데이터 찾기
-    const friday = weekData.find(d => new Date(d.date).getDay() === 5);
-
-    if (friday) {
-      weeklyData.push(friday);
-    } else {
-      // 금요일이 없으면 주의 마지막 거래일
-      weeklyData.push(weekData[weekData.length - 1]);
-    }
+  let lastKey = '';
+  for (const data of priceData) {
+    const key = isoWeekKey(data.date);
+    if (key === lastKey) weeklyData[weeklyData.length - 1] = data;
+    else weeklyData.push(data);
+    lastKey = key;
   }
-
   return weeklyData;
 }
 
 /**
- * 주 번호 계산
+ * ISO 주차 키 ('YYYY-Www'). 날짜 문자열을 UTC로 해석해 시간대와 무관하고,
+ * 연말(12/29~31이 다음 해 1주차) 경계에서도 주-연도를 올바르게 쓴다.
  */
-function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+export function isoWeekKey(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7)); // 해당 주 목요일
+  const year = d.getUTCFullYear();
+  const week = Math.ceil(((d.getTime() - Date.UTC(year, 0, 1)) / 86400000 + 1) / 7);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+/** 마지막 확정 봉 다음 정규장이 다른 주에 있으면 그 주는 끝났다 (금요일 휴장 주 포함) */
+export function isWeekComplete(lastBarDate: string): boolean {
+  return isoWeekKey(nextTradingDay(lastBarDate)) !== isoWeekKey(lastBarDate);
 }
 
 /**
@@ -485,10 +465,16 @@ export function determineWeeklyMode(
 }
 
 /**
- * 최신 주간 RSI 기반 모드 정보 반환
+ * 다음 정규장에 적용할 주간 RSI 모드.
+ * 진행 중인 주는 제외하고 완료된 주만 쓴다 (백테스트의 enrichDataWithWeeklyRSIMode와 동일한 규칙).
+ * priceData 는 확정 봉만 담아야 한다 (marketDataService가 장중 봉을 뺀다).
  */
 export function getWeeklyRSIModeInfo(priceData: MarketData[]): WeeklyModeInfo {
-  const weeklyRSI = calculateWeeklyRSI(priceData);
+  const allWeeks = calculateWeeklyRSI(priceData);
+  const lastDate = priceData[priceData.length - 1]?.date;
+  const weeklyRSI = lastDate && !isWeekComplete(lastDate)
+    ? allWeeks.slice(0, -1)
+    : allWeeks;
 
   if (weeklyRSI.length < 2) {
     return {
@@ -517,45 +503,26 @@ export function getWeeklyRSIModeInfo(priceData: MarketData[]): WeeklyModeInfo {
 }
 
 /**
- * 일간 데이터에 주간 RSI 기반 모드 정보 추가
+ * 일간 데이터에 그날 적용되는 주간 RSI 모드를 붙인다.
+ * 주 W의 종가로 정한 모드는 다음 주 첫 거래일부터 적용한다 — 그 주 안에서는 아직 알 수 없는 값이기 때문.
  */
 export function enrichDataWithWeeklyRSIMode(
   priceData: MarketData[]
 ): (MarketData & { mode: 'safe' | 'aggressive' | 'bull' | 'cash'; modeReason: string })[] {
-  const weeklyRSI = calculateWeeklyRSI(priceData);
-
-  if (weeklyRSI.length < 2) {
-    return priceData.map(data => ({
-      ...data,
-      mode: 'safe' as const,
-      modeReason: '주간 데이터 부족'
-    }));
-  }
-
-  // 주간 데이터를 날짜별로 매핑
-  const weeklyMap = new Map<string, WeeklyRSIData>();
-  for (const week of weeklyRSI) {
-    weeklyMap.set(week.date, week);
-  }
-
-  // 각 일간 데이터에 모드 적용
-  let currentMode: 'safe' | 'aggressive' | 'bull' | 'cash' = 'safe';
-  let currentReason = '초기값';
-
-  return priceData.map((data, _index) => {
-    // 해당 날짜가 주간 데이터에 있는지 확인
-    const weekInfo = weeklyMap.get(data.date);
-
-    if (weekInfo && weekInfo.prevRSI !== null) {
-      const result = determineWeeklyMode(weekInfo.rsi, weekInfo.prevRSI);
-      currentMode = result.mode;
-      currentReason = result.reason;
+  const modeAfterWeek = new Map<string, { mode: 'safe' | 'aggressive' | 'bull' | 'cash'; reason: string }>();
+  for (const week of calculateWeeklyRSI(priceData)) {
+    if (week.rsi !== null && week.prevRSI !== null) {
+      modeAfterWeek.set(isoWeekKey(week.date), determineWeeklyMode(week.rsi, week.prevRSI));
     }
+  }
 
-    return {
-      ...data,
-      mode: currentMode,
-      modeReason: currentReason
-    };
+  let current: { mode: 'safe' | 'aggressive' | 'bull' | 'cash'; reason: string } = { mode: 'safe', reason: '주간 데이터 부족 - 안전모드' };
+  let prevKey = '';
+
+  return priceData.map(data => {
+    const key = isoWeekKey(data.date);
+    if (prevKey && key !== prevKey) current = modeAfterWeek.get(prevKey) ?? current;
+    prevKey = key;
+    return { ...data, mode: current.mode, modeReason: current.reason };
   });
 }

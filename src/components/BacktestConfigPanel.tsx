@@ -313,7 +313,7 @@ export const BacktestConfigPanel: React.FC<BacktestConfigPanelProps> = ({
             <Form.Item label={
               <Space>
                 <span>하이브리드 전략</span>
-                <Tooltip title="RSI aggressive/bull 구간에서 B&H(전량 보유)로 전환, safe/cash 구간에서 동파법으로 복귀 (SMA50 진입 필터 + 10거래일 대기)">
+                <Tooltip title="RSI aggressive/bull 구간에서 B&H(전량 보유)로 전환, safe/cash 구간에서 동파법으로 복귀 (SMA50 진입 필터 + 10거래일 대기). 1995~2010 표본 외 검증에서 연 -23%, 최대 낙폭 -99%로 실패 (docs/validation/results.md)">
                   <InfoCircleOutlined style={{ color: '#888' }} />
                 </Tooltip>
               </Space>

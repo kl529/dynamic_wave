@@ -235,8 +235,8 @@ export class DivisionEngine {
 
     const buyLimitPrice = prevClose * (1 + modeConfig.buyTarget);
 
-    // 수수료 포함 최대 매수 수량
-    const quantity = Math.floor(division.cash / (todayClose * (1 + getTotalFeeRate())));
+    // LOC 주문 수량은 장 마감 전에 지정가 기준으로 정해야 한다 (체결은 종가 ≤ 지정가)
+    const quantity = Math.floor(division.cash / (buyLimitPrice * (1 + getTotalFeeRate())));
     if (quantity === 0) return null;
 
     const amount = quantity * todayClose;
@@ -351,10 +351,10 @@ export class DivisionEngine {
       };
     }
 
-    // 조건 2: 목표 수익률 도달 → LOC 지정가 매도
+    // 조건 2: 목표 수익률 도달 → LOC 매도 (종가 ≥ 지정가이면 종가에 체결)
     const sellLimitPrice = division.avgPrice * (1 + modeConfig.sellTarget);
     if (todayClose >= sellLimitPrice) {
-      const executionPrice = sellLimitPrice;
+      const executionPrice = todayClose;
       const amount = division.holdings * executionPrice;
       const commission = amount * getTotalFeeRate();
       const profit = amount - division.totalCost - commission;
@@ -384,6 +384,7 @@ export class DivisionEngine {
     action: DivisionAction,
     date: string
   ): DivisionPortfolio {
+    // 평가금액도 체결 직후 상태로 맞춘다 (그날 totalAssets 합계에 쓰인다)
     return {
       ...division,
       status: 'HOLDING',
@@ -392,7 +393,10 @@ export class DivisionEngine {
       avgPrice: action.price,
       buyDate: date,
       buyPrice: action.price,
-      totalCost: action.amount + action.commission
+      totalCost: action.amount + action.commission,
+      currentValue: action.amount,
+      unrealizedPL: -action.commission,
+      unrealizedPLRate: -(action.commission / (action.amount + action.commission)) * 100
     };
   }
 
@@ -408,7 +412,10 @@ export class DivisionEngine {
       avgPrice: 0,
       buyDate: '',
       buyPrice: 0,
-      totalCost: 0
+      totalCost: 0,
+      currentValue: 0,
+      unrealizedPL: 0,
+      unrealizedPLRate: 0
     };
   }
 
@@ -436,7 +443,8 @@ export class DivisionEngine {
     let divisions = [...currentDivisions];
 
     if (isRebalanceDay) {
-      divisions = this.rebalanceDivisions(divisions, todayClose);
+      // 재분할 금액은 장 마감 전에 정해야 하므로 전일 종가로 평가한다
+      divisions = this.rebalanceDivisions(divisions, prevClose ?? todayClose);
     }
 
     divisions = this.updateDivisionStatus(divisions, todayClose, date);
@@ -645,8 +653,10 @@ export class DivisionEngine {
       // B&H 진입 필터 (비대칭 — 진입만 엄격)
       if (desiredStrat === 'bnh' && stratMode !== 'bnh') {
         const lockOk = daysSinceSwitch >= MIN_HOLD_ENTRY;
-        const sma = smaMap.get(dayData.date);
-        const smaOk = !sma || dayData.price >= sma;
+        // 오늘 종가 전에 알 수 있는 값만 사용: 전일 종가 vs 전일 SMA
+        const prevDay = i > 0 ? historicalData[i - 1] : null;
+        const sma = prevDay ? smaMap.get(prevDay.date) : undefined;
+        const smaOk = !prevDay || !sma || prevDay.price >= sma;
         if (!lockOk || !smaOk) desiredStrat = stratMode; // 진입 차단
       }
       // B&H 탈출: 즉시 (비대칭 — 탈출은 빠르게)

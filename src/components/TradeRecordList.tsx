@@ -54,7 +54,7 @@ export const TradeRecordList: React.FC<TradeRecordListProps> = ({ refreshTrigger
     setMigrating(true);
     try {
       const count = await TradeRecordService.migrateFromLocalStorage();
-      message.success(`${count}건의 기록이 Supabase로 이전되었습니다`);
+      message.success(`${count}건의 기록이 DB로 이전되었습니다`);
       setHasLocalData(false);
       loadRecords();
     } catch (error) {
@@ -173,7 +173,7 @@ export const TradeRecordList: React.FC<TradeRecordListProps> = ({ refreshTrigger
       {hasLocalData && (
         <Alert
           message="로컬 데이터 발견"
-          description="브라우저에 저장된 기존 매매 기록이 있습니다. Supabase로 이전하시겠습니까?"
+          description="브라우저에 저장된 기존 매매 기록이 있습니다. DB로 이전하시겠습니까?"
           type="info"
           showIcon
           style={{ marginBottom: 16 }}

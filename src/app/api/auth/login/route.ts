@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authToken } from '@/lib/authToken';
 
 export async function POST(request: NextRequest) {
-  const { password } = await request.json();
+  const { password } = await request.json().catch(() => ({ password: null }));
   const sitePassword = process.env.SITE_PASSWORD;
 
   if (!sitePassword || password !== sitePassword) {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true });
-  response.cookies.set('site_auth', sitePassword, {
+  response.cookies.set('site_auth', await authToken(sitePassword), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

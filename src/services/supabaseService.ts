@@ -2,63 +2,61 @@
 
 import type { TradeRecord } from '@/lib/supabase';
 
-const DEFAULT_USER_ID = 'default_user';
+type NewRecord = Pick<TradeRecord, 'trade_date' | 'division_number' | 'trade_type' | 'quantity' | 'price'> & { comment?: string | null };
 
+async function request<T>(input: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+/**
+ * 매매 기록 (수동 입력용). DB 접근은 서버 라우트(/api/db/trade-records)가 한다.
+ */
 export class TradeRecordService {
-  static async addRecord(record: Omit<TradeRecord, 'id' | 'created_at'>): Promise<TradeRecord> {
-    const res = await fetch('/api/db/trade-records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(record),
-    });
-    if (!res.ok) throw new Error('매매 기록 추가 실패');
-    return res.json();
+  static addRecord(record: NewRecord): Promise<TradeRecord> {
+    return request('/api/db/trade-records', { method: 'POST', body: JSON.stringify(record) });
   }
 
-  static async getRecords(
-    userId: string = DEFAULT_USER_ID,
-    limit: number = 100
-  ): Promise<TradeRecord[]> {
-    const res = await fetch(
-      `/api/db/trade-records?user_id=${encodeURIComponent(userId)}&limit=${limit}`
-    );
-    if (!res.ok) throw new Error('매매 기록 조회 실패');
-    return res.json();
+  /** 최근순 */
+  static getRecords(): Promise<TradeRecord[]> {
+    return request('/api/db/trade-records');
   }
 
-  static async deleteRecord(recordId: number): Promise<void> {
-    const res = await fetch(`/api/db/trade-records?id=${recordId}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error(`매매 기록 삭제 실패 (id: ${recordId})`);
+  static deleteRecord(recordId: number): Promise<void> {
+    return request(`/api/db/trade-records?id=${recordId}`, { method: 'DELETE' });
   }
 
-  static async migrateFromLocalStorage(userId: string = DEFAULT_USER_ID): Promise<number> {
+  /**
+   * 로컬스토리지 데이터를 DB로 마이그레이션
+   */
+  static async migrateFromLocalStorage(): Promise<number> {
     if (typeof window === 'undefined') return 0;
+
     const localData = localStorage.getItem('tradeRecords');
     if (!localData) return 0;
+
     const records = JSON.parse(localData);
     if (!Array.isArray(records) || records.length === 0) return 0;
 
-    const mapped = records.map((r: any) => ({
-      user_id: userId,
-      trade_date: r.date,
-      division_number: r.division,
-      trade_type: r.action as 'BUY' | 'SELL',
-      quantity: r.quantity,
-      price: r.price,
-      amount: r.amount,
-      comment: r.comment || null,
-    }));
+    for (const r of records) {
+      await this.addRecord({
+        trade_date: r.date,
+        division_number: r.division,
+        trade_type: r.action as 'BUY' | 'SELL',
+        quantity: r.quantity,
+        price: r.price,
+        comment: r.comment || null,
+      });
+    }
 
-    await Promise.all(mapped.map((r) => TradeRecordService.addRecord(r)));
-
+    // 마이그레이션 성공 후 로컬스토리지 백업 키로 이동
     localStorage.setItem('tradeRecords_backup', localData);
     localStorage.removeItem('tradeRecords');
-    return records.length;
-  }
 
-  static isConfigured(): boolean {
-    return true;
+    return records.length;
   }
 }

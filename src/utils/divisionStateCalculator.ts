@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG } from '@/constants';
-import { TradeRecord } from '@/lib/supabase';
+import type { TradeRecord } from '@/lib/supabase';
 
 export interface DivisionState {
   cash: number;

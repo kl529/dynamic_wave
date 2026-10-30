@@ -1,9 +1,5 @@
-// Supabase → local PostgreSQL로 마이그레이션 완료
-// DB 접근은 /api/db/trade-records 엔드포인트를 통해 이루어집니다
-
-export const supabase = null as any;
-export const isSupabaseConfigured = true;
-
+// 매매 기록 타입. DB는 로컬 PostgreSQL이고, 접근은 서버 라우트 /api/db/trade-records 에서만 한다.
+// (파일명은 Supabase 시절 이름을 유지)
 export interface TradeRecord {
   id?: number;
   user_id: string;
@@ -13,6 +9,6 @@ export interface TradeRecord {
   quantity: number;
   price: number;
   amount: number;
-  comment?: string;
+  comment?: string | null;
   created_at?: string;
 }

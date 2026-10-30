@@ -5,11 +5,15 @@ import { Card, Form, Select, InputNumber, DatePicker, Input, Button, message, Sp
 import { PlusOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { TradeRecordService } from '@/services/supabaseService';
+import { DEFAULT_CONFIG } from '@/constants';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-export const TradeRecordForm: React.FC<{ onSave?: () => void }> = ({ onSave }) => {
+export const TradeRecordForm: React.FC<{ onSave?: () => void; divisions?: number }> = ({
+  onSave,
+  divisions = DEFAULT_CONFIG.divisions
+}) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
@@ -17,13 +21,11 @@ export const TradeRecordForm: React.FC<{ onSave?: () => void }> = ({ onSave }) =
     setLoading(true);
     try {
       await TradeRecordService.addRecord({
-        user_id: 'default_user',
         trade_date: values.date.format('YYYY-MM-DD'),
         division_number: values.division,
         trade_type: values.action,
         quantity: values.quantity,
         price: values.price,
-        amount: values.quantity * values.price,
         comment: values.comment || null
       });
 
@@ -74,7 +76,7 @@ export const TradeRecordForm: React.FC<{ onSave?: () => void }> = ({ onSave }) =
               rules={[{ required: true, message: '분할 선택' }]}
             >
               <Select placeholder="분할">
-                {[1, 2, 3, 4, 5].map(num => (
+                {Array.from({ length: divisions }, (_, i) => i + 1).map(num => (
                   <Option key={num} value={num}>분할 {num}</Option>
                 ))}
               </Select>

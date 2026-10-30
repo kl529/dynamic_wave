@@ -1,26 +1,30 @@
 'use client'
 
-import React, { useState } from 'react';
-import { Layout, Tabs, Typography, Space, Button, Alert, Spin, Card, Row, Col } from 'antd';
+import React, { useMemo, useState } from 'react';
+import { Layout, Tabs, Typography, Space, Button, Alert, Card } from 'antd';
 import {
   SettingOutlined,
-  TableOutlined,
   RocketOutlined,
   FileTextOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  LineChartOutlined
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
 import { ConfigPanel } from '@/components/ConfigPanel';
-import { DongpaTradeTable } from '@/components/DongpaTradeTable';
 import { TodayOverview } from '@/components/TodayOverview';
 import { DivisionStatusPanel } from '@/components/DivisionStatusPanel';
 import { TradeRecordForm } from '@/components/TradeRecordForm';
 import { TradeRecordList } from '@/components/TradeRecordList';
 import { CurrentInvestmentStatus } from '@/components/CurrentInvestmentStatus';
-import { useDongpaEngine } from '@/hooks/useDongpaEngine';
+import { StrategySignalCard } from '@/components/StrategySignalCard';
+import { DongpaOrderSheet } from '@/components/DongpaOrderSheet';
+import { useMarketHistory } from '@/hooks/useMarketHistory';
 import { useRSIMode } from '@/hooks/useRSIMode';
 import { calculateDivisionStatesFromRecords, createInitialDivisionStates, DivisionState } from '@/utils/divisionStateCalculator';
 import { TradeRecordService } from '@/services/supabaseService';
+import { strategySignal } from '@/lib/strategy';
+import { dongpaOrders } from '@/lib/dongpaOrders';
+import { nextTradingDay } from '@/lib/marketTime';
 import { DongpaConfig } from '@/types';
 import { DEFAULT_CONFIG, TRADING, UI } from '@/constants';
 
@@ -49,32 +53,24 @@ const loadConfigFromStorage = (): DongpaConfig => {
 
 export default function Home() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('today');
+  const [activeTab, setActiveTab] = useState('strategy');
   const [realDivisions, setRealDivisions] = useState<DivisionState[]>([]);
   const [userConfig, setUserConfig] = useState<DongpaConfig>(loadConfigFromStorage());
   const [tradeRecordRefresh, setTradeRecordRefresh] = useState(0);
-  const [divisionsLoading, setDivisionsLoading] = useState(true);
 
-  // Supabase에서 매매기록을 로드하여 분할 상태 계산
+  // DB 매매기록으로 분할 상태 계산
   const loadDivisionStates = React.useCallback(async (capital?: number) => {
     const targetCapital = capital || userConfig.initialCapital;
 
     try {
-      if (TradeRecordService.isConfigured()) {
-        const records = await TradeRecordService.getRecords();
-        const divisions = calculateDivisionStatesFromRecords(records, targetCapital);
-        setRealDivisions(divisions);
-      } else {
-        // Supabase 미설정시 초기 상태
-        setRealDivisions(createInitialDivisionStates(targetCapital));
-      }
+      const records = await TradeRecordService.getRecords();
+      setRealDivisions(calculateDivisionStatesFromRecords(records, targetCapital, userConfig.divisions));
     } catch (error) {
+      // DB 연결 실패 등 오류 시 초기 상태
       console.error('Failed to load division states:', error);
-      setRealDivisions(createInitialDivisionStates(targetCapital));
-    } finally {
-      setDivisionsLoading(false);
+      setRealDivisions(createInitialDivisionStates(targetCapital, userConfig.divisions));
     }
-  }, [userConfig.initialCapital]);
+  }, [userConfig.initialCapital, userConfig.divisions]);
 
   // 초기 로드
   React.useEffect(() => {
@@ -94,16 +90,12 @@ export default function Home() {
     }
   };
 
-  const {
-    config,
-    loading,
-    tradeHistory,
-    todaySignal,
-    currentPrice,
-    changePercent,
-    historicalData,
-    refreshCurrentPrice
-  } = useDongpaEngine({ config: userConfig });
+  // 추천 전략: ^NDX 300일 이동평균까지 필요. 동파법: 주간 RSI 수렴을 위해 4년치
+  const ndx = useMarketHistory('^NDX', 400);
+  const qld = useMarketHistory('QLD', 5);
+  const soxl = useMarketHistory('SOXL', 1000);
+  const signal = useMemo(() => strategySignal(ndx.data), [ndx.data]);
+  const historicalData = soxl.data;
 
   // RSI 모드 계산 (auto 모드일 때만)
   const rsiModeInfo = useRSIMode({
@@ -111,52 +103,52 @@ export default function Home() {
     enabled: userConfig.mode === 'auto'
   });
 
-  // 오늘 종가와 어제 종가 계산 (최신 데이터가 오늘)
-  const todayClose = historicalData.length > 0 
-    ? historicalData[historicalData.length - 1].price 
-    : currentPrice;
-  const todayDate = historicalData.length > 0
-    ? historicalData[historicalData.length - 1].date
-    : '';
-  const yesterdayClose = historicalData.length > 1 
-    ? historicalData[historicalData.length - 2].price 
-    : currentPrice;
-  const yesterdayDate = historicalData.length > 1
-    ? historicalData[historicalData.length - 2].date
-    : '';
+  // 마지막 확정 종가와 그 전일 종가
+  const last = historicalData[historicalData.length - 1];
+  const prev = historicalData[historicalData.length - 2];
+  const todayClose = last?.price ?? 0;
+  const todayDate = last?.date ?? '';
+  const yesterdayClose = prev?.price ?? todayClose;
+  const yesterdayDate = prev?.date ?? '';
 
-  // 실제 적용 모드 결정 (auto이면 RSI 기반)
-  const effectiveMode = userConfig.mode === 'auto' && rsiModeInfo ? rsiModeInfo.mode : (userConfig.mode as 'safe' | 'aggressive' | 'bull' | 'cash');
-
-  // 모드별 임계값 (v3.1 기준)
-  const effectiveThresholds = {
-    safe:       { buy: TRADING.SAFE.BUY_TARGET,       sell: TRADING.SAFE.SELL_TARGET,       holdDays: TRADING.SAFE.HOLDING_DAYS },
-    aggressive: { buy: TRADING.AGGRESSIVE.BUY_TARGET, sell: TRADING.AGGRESSIVE.SELL_TARGET, holdDays: TRADING.AGGRESSIVE.HOLDING_DAYS },
-    bull:       { buy: TRADING.BULL.BUY_TARGET,       sell: TRADING.BULL.SELL_TARGET,       holdDays: TRADING.BULL.HOLDING_DAYS },
-    cash:       { buy: 0,                              sell: 0,                              holdDays: 0 },
-  }[effectiveMode];
-
-  // 다음 매수할 분할 찾기 (EMPTY 상태인 첫 번째 분할)
-  const nextBuyDivision = realDivisions.find(d => d.status === 'EMPTY');
-  const availableCash = nextBuyDivision?.cash || (userConfig.initialCapital / userConfig.divisions);
-
-  // 실제 매수 가능 수량 계산 (LOC 체결가 = 오늘 종가 예상)
-  const estimatedBuyPrice = todayClose;
-  const estimatedBuyQuantity = estimatedBuyPrice > 0 ? Math.floor(availableCash / estimatedBuyPrice) : 0;
-  const estimatedBuyAmount = estimatedBuyQuantity * estimatedBuyPrice;
+  // 다음 정규장에 적용할 모드와 주문표
+  const effectiveMode = userConfig.mode === 'auto' ? rsiModeInfo.mode : userConfig.mode;
+  const session = todayDate ? nextTradingDay(todayDate) : '';
+  const orders = useMemo(
+    () => (todayClose > 0 ? dongpaOrders(realDivisions as DivisionState[], todayClose, effectiveMode, session) : []),
+    [realDivisions, todayClose, effectiveMode, session]
+  );
 
   const tabItems = [
     {
-      key: 'today',
+      key: 'strategy',
       label: (
         <Space>
-          <RocketOutlined />
-          오늘 매매
+          <LineChartOutlined />
+          추천 전략
         </Space>
       ),
       children: (
+        <StrategySignalCard
+          signal={signal}
+          tradePrice={qld.data[qld.data.length - 1]?.price ?? null}
+          loading={ndx.loading}
+          error={ndx.error ?? qld.error}
+        />
+      )
+    },
+    {
+      key: 'dongpa',
+      label: (
+        <Space>
+          <RocketOutlined />
+          동파법
+        </Space>
+      ),
+      children: soxl.error ? (
+        <Alert type="error" showIcon message="SOXL 시세를 불러오지 못했습니다" description={soxl.error} />
+      ) : (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* 오늘 요일 & 분할 현황 */}
           <TodayOverview
             divisionPortfolios={realDivisions}
             yesterdayClose={yesterdayClose}
@@ -168,166 +160,14 @@ export default function Home() {
             rsiModeInfo={rsiModeInfo}
           />
 
-          {/* 오늘 실행할 매매 요약 */}
-          <Card
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 20 }}>📋</span>
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 'bold' }}>오늘 실행할 매매</div>
-                  <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 'normal' }}>
-                    {todayDate} 종가 ${todayClose.toFixed(2)} 기준
-                  </div>
-                </div>
-              </div>
-            }
-            style={{
-              background: UI.COLORS.PRIMARY_GRADIENT,
-              color: 'white',
-              borderRadius: 12,
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
-            }}
-            styles={{ 
-              header: { 
-                color: 'white', 
-                borderBottom: '1px solid rgba(255,255,255,0.2)',
-                padding: '16px 24px'
-              },
-              body: { padding: '24px' }
-            }}
-          >
-            <Row gutter={[16, 16]}>
-              {effectiveMode === 'cash' ? (
-                // 현금 보유 모드 — 매매 없음
-                <Col span={24}>
-                  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                    <div style={{ fontSize: 56, marginBottom: 16 }}>🛡️</div>
-                    <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>현금 보유 중</div>
-                    <div style={{ fontSize: 15, opacity: 0.85, background: 'rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: 8, display: 'inline-block' }}>
-                      RSI 하락장 감지 — 신규 매수 중단, 기존 분할 청산 후 대기
-                    </div>
-                  </div>
-                </Col>
-              ) : changePercent <= effectiveThresholds.buy * 100 && nextBuyDivision ? (
-                // 매수 조건 충족
-                <>
-                  <Col xs={24} md={12}>
-                    <div style={{
-                      background: UI.COLORS.BUY_SIGNAL_BG,
-                      padding: 24,
-                      borderRadius: 12,
-                      border: `2px solid ${UI.COLORS.BUY_SIGNAL_BORDER}`,
-                      boxShadow: '0 4px 12px rgba(24, 144, 255, 0.2)'
-                    }}>
-                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 24 }}>🚀</span>
-                        <span style={{ fontWeight: 'bold' }}>매수 신호 발생!</span>
-                      </div>
-                      <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>{estimatedBuyQuantity}주</div>
-                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>
-                        예상 체결가: ${estimatedBuyPrice.toFixed(2)}
-                      </div>
-                      <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 12 }}>
-                        예상 투자금: ${estimatedBuyAmount.toFixed(0)}
-                      </div>
-                      <div style={{ background: 'rgba(255,255,255,0.2)', padding: '8px 12px', borderRadius: 6, fontSize: 13, opacity: 0.9 }}>
-                        💡 전일 대비 {Math.abs(changePercent).toFixed(2)}% 하락 (조건: {Math.abs(effectiveThresholds.buy * 100).toFixed(1)}% 이상)
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <div style={{ background: UI.COLORS.CARD_BG, padding: 24, borderRadius: 12, border: UI.COLORS.CARD_BORDER }}>
-                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매도</div>
-                      <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
-                      <div style={{ fontSize: 13, opacity: 0.6 }}>
-                        보유 중인 분할이 목표 수익률에<br />도달하면 매도 신호가 발생합니다
-                      </div>
-                    </div>
-                  </Col>
-                </>
-              ) : realDivisions.some(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= effectiveThresholds.sell)) ? (
-                // 매도 조건 충족
-                <>
-                  <Col xs={24} md={12}>
-                    <div style={{ background: UI.COLORS.CARD_BG, padding: 24, borderRadius: 12, border: UI.COLORS.CARD_BORDER }}>
-                      <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.6 }}>매수</div>
-                      <div style={{ fontSize: 28, opacity: 0.6, marginBottom: 8 }}>대기 중</div>
-                      <div style={{ fontSize: 13, opacity: 0.6 }}>
-                        전일 대비 {Math.abs(effectiveThresholds.buy * 100).toFixed(1)}% 이상 하락 시<br />매수 신호가 발생합니다
-                      </div>
-                    </div>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <div style={{
-                      background: UI.COLORS.SELL_SIGNAL_BG,
-                      padding: 24,
-                      borderRadius: 12,
-                      border: `2px solid ${UI.COLORS.SELL_SIGNAL_BORDER}`,
-                      boxShadow: '0 4px 12px rgba(82, 196, 26, 0.2)'
-                    }}>
-                      {(() => {
-                        const sellDivs = realDivisions.filter(d => d.status === 'HOLDING' && d.avgPrice > 0 && ((todayClose - d.avgPrice) / d.avgPrice >= effectiveThresholds.sell));
-                        const sellQty = sellDivs.reduce((sum, d) => sum + d.holdings, 0);
-                        return (
-                          <>
-                            <div style={{ fontSize: 14, marginBottom: 12, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 24 }}>💰</span>
-                              <span style={{ fontWeight: 'bold' }}>매도 신호 발생!</span>
-                            </div>
-                            <div style={{ fontSize: 40, fontWeight: 'bold', marginBottom: 8 }}>{sellQty}주</div>
-                            <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>예상 체결가: ${todayClose.toFixed(2)}</div>
-                            <div style={{ fontSize: 15, opacity: 0.95, marginBottom: 4 }}>예상 매도금: ${(sellQty * todayClose).toFixed(0)}</div>
-                            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '8px 12px', borderRadius: 6, fontSize: 13, opacity: 0.9, marginTop: 8 }}>
-                              💡 목표 수익률 +{(effectiveThresholds.sell * 100).toFixed(1)}% 달성
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Col>
-                </>
-              ) : (
-                // 조건 미충족
-                <Col span={24}>
-                  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                    <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
-                    <div style={{ fontSize: 28, fontWeight: 'bold', marginBottom: 12 }}>관망 (대기 중)</div>
-                    <div style={{ fontSize: 15, opacity: 0.85, background: 'rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: 8, display: 'inline-block' }}>
-                      <div style={{ marginBottom: 8 }}>
-                        📉 매수 조건: 전일 대비 <strong>{Math.abs(effectiveThresholds.buy * 100).toFixed(1)}%</strong> 필요 (현재: {changePercent.toFixed(2)}%)
-                      </div>
-                      <div>
-                        📈 매도 조건: 보유 분할의 수익률 <strong>+{(effectiveThresholds.sell * 100).toFixed(1)}%</strong> 필요
-                      </div>
-                    </div>
-                  </div>
-                </Col>
-              )}
-            </Row>
-          </Card>
+          {session && <DongpaOrderSheet orders={orders} session={session} mode={effectiveMode} />}
 
-          {/* 5분할 상태 대시보드 */}
           <DivisionStatusPanel
             divisionPortfolios={realDivisions}
             todayClose={todayClose}
-            mode={config.mode}
+            mode={userConfig.mode}
           />
         </Space>
-      )
-    },
-    {
-      key: 'history',
-      label: (
-        <Space>
-          <TableOutlined />
-          거래 내역
-        </Space>
-      ),
-      children: (
-        <DongpaTradeTable
-          trades={tradeHistory}
-          loading={loading}
-        />
       )
     },
     {
@@ -348,7 +188,7 @@ export default function Home() {
           />
 
           {/* 매매 기록 입력 폼 */}
-          <TradeRecordForm onSave={() => {
+          <TradeRecordForm divisions={userConfig.divisions} onSave={() => {
             loadDivisionStates();
             setTradeRecordRefresh(prev => prev + 1);
           }} />
@@ -467,13 +307,13 @@ export default function Home() {
               level={3}
               className="!m-0 text-primary-500 text-base sm:text-lg lg:text-xl truncate"
             >
-              🚀 동파법 SOXL
+              🚀 동파
             </Title>
             <Text
               type="secondary"
               className="hidden sm:inline text-xs sm:text-sm"
             >
-              실시간 매매 신호 & 백테스팅
+              매매 신호 & 백테스팅
             </Text>
           </div>
 
@@ -496,19 +336,16 @@ export default function Home() {
       </Header>
 
       <Content style={{ padding: '24px' }}>
-        {/* 로딩 오버레이 */}
-        <Spin spinning={loading && tradeHistory.length === 0} size="large">
-          <div style={{ minHeight: UI.MIN_HEIGHT }}>
-            {/* 메인 탭 컨텐츠 */}
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              items={tabItems}
-              size="large"
-              tabBarStyle={{ marginBottom: 24 }}
-            />
-          </div>
-        </Spin>
+        <div style={{ minHeight: UI.MIN_HEIGHT }}>
+          {/* 메인 탭 컨텐츠 */}
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={tabItems}
+            tabBarGutter={20}
+            tabBarStyle={{ marginBottom: 16 }}
+          />
+        </div>
 
         {/* 면책조항 */}
         <Alert
@@ -518,7 +355,7 @@ export default function Home() {
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 본 시스템은 교육 및 분석 목적으로 제작되었습니다. 
                 실제 투자 결정은 개인의 책임이며, 투자에 따른 손실에 대해 개발자는 책임지지 않습니다. 
-                SOXL은 3배 레버리지 ETF로 높은 변동성과 리스크를 가지고 있으므로 신중한 투자 결정이 필요합니다.
+                QLD(2배)·SOXL(3배) 같은 레버리지 ETF는 변동성이 커서 큰 손실이 날 수 있습니다.
               </Text>
             </div>
           }

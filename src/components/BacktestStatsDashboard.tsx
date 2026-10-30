@@ -49,10 +49,11 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
   const sellActions = allActions.filter(a => a.action === 'SELL');
   const stopLossActions = allActions.filter(a => a.action === 'STOP_LOSS');
 
-  // 승률 계산
-  const profitableSells = sellActions.filter(a => (a.profit || 0) > 0);
-  const winRate = sellActions.length > 0
-    ? (profitableSells.length / sellActions.length) * 100
+  // 승률 계산: 청산 전체(익절 매도 + 손절) 기준. 손절을 빼면 손실 거래가 빠져 승률·EV가 부풀려진다
+  const exitActions = [...sellActions, ...stopLossActions];
+  const profitableSells = exitActions.filter(a => (a.profit || 0) > 0);
+  const winRate = exitActions.length > 0
+    ? (profitableSells.length / exitActions.length) * 100
     : 0;
 
   // 평균 수익/손실
@@ -60,7 +61,7 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
     ? profitableSells.reduce((sum, a) => sum + (a.profit || 0), 0) / profitableSells.length
     : 0;
 
-  const losingSells = sellActions.filter(a => (a.profit || 0) < 0);
+  const losingSells = exitActions.filter(a => (a.profit || 0) < 0);
   const avgLoss = losingSells.length > 0
     ? losingSells.reduce((sum, a) => sum + (a.profit || 0), 0) / losingSells.length
     : 0;
@@ -91,10 +92,10 @@ export const BacktestStatsDashboard: React.FC<BacktestStatsDashboardProps> = ({
 
   // 기대값 (EV) = 승률×평균수익 - 패율×평균손실
   // 양수면 "장기적으로 반드시 이익"이 되는 구조
-  const winRateDecimal = sellActions.length > 0 ? profitableSells.length / sellActions.length : 0;
+  const winRateDecimal = exitActions.length > 0 ? profitableSells.length / exitActions.length : 0;
   const lossRateDecimal = 1 - winRateDecimal;
   const ev = (winRateDecimal * avgProfit) + (lossRateDecimal * avgLoss); // avgLoss는 음수
-  const evRate = sellActions.length > 0 && initialCapital > 0
+  const evRate = exitActions.length > 0 && initialCapital > 0
     ? (ev / (initialCapital / (config.divisions || 5))) * 100
     : 0;
 

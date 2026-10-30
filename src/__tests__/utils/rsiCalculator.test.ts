@@ -249,7 +249,7 @@ describe('rsiCalculator', () => {
     });
 
     it('should return aggressive mode when RSI is rising', () => {
-      const result = determineWeeklyMode(55, 50);
+      const result = determineWeeklyMode(52, 48);
       expect(result.mode).toBe('aggressive');
       expect(result.reason).toContain('상승');
     });

@@ -1,122 +1,81 @@
 'use client'
 
-import { MarketData, RealtimeQuote } from '@/types';
+import { MarketData } from '@/types';
 
-// Yahoo Finance API 응답 타입 정의
+// Yahoo Finance chart API 응답 중 사용하는 부분
 interface YahooFinanceResponse {
   chart: {
     result: Array<{
       meta: {
-        regularMarketPrice: number;
-        previousClose: number;
-        regularMarketVolume?: number;
-        regularMarketTime: number;
-        regularMarketDayHigh?: number;
-        regularMarketDayLow?: number;
+        currentTradingPeriod?: { regular?: { start: number; end: number } };
       };
       timestamp?: number[];
       indicators?: {
+        adjclose?: Array<{ adjclose?: (number | null)[] }>;
         quote?: Array<{
-          open?: number[];
-          high?: number[];
-          low?: number[];
-          close?: number[];
-          volume?: number[];
+          open?: (number | null)[];
+          high?: (number | null)[];
+          low?: (number | null)[];
+          close?: (number | null)[];
+          volume?: (number | null)[];
         }>;
       };
     }>;
   };
 }
 
+export type MarketSymbol = 'SOXL' | '^NDX' | 'QLD' | 'QQQ' | 'TQQQ' | 'SPY';
+
 export class MarketDataService {
-  // Yahoo Finance API를 통해 실시간 SOXL 데이터 가져오기
-  static async getCurrentSOXLData(): Promise<RealtimeQuote> {
-    try {
-      const response = await fetch(`/api/yahoo-finance?symbol=SOXL`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return this.parseYahooData(data);
-    } catch (error) {
-      console.error('SOXL 실시간 데이터 조회 실패:', error);
-      throw error;
+  /**
+   * 최근 days 거래일의 확정된 일봉 (장중 미완성 봉 제외).
+   * adjusted=true 면 배당까지 반영한 수정주가 (백테스트 수익률용). 신호·주문 가격은 실제 종가를 쓴다.
+   */
+  static async getHistory(symbol: MarketSymbol, days: number, adjusted = false): Promise<MarketData[]> {
+    const response = await fetch(`/api/yahoo-finance?symbol=${encodeURIComponent(symbol)}&period=${days}d`);
+    if (!response.ok) {
+      throw new Error(`${symbol} 시세 조회 실패: HTTP ${response.status}`);
     }
+    return this.parseYahooHistorical(await response.json(), Date.now() / 1000, adjusted);
   }
 
-  // Yahoo Finance API를 통해 과거 SOXL 데이터 가져오기
   static async getHistoricalSOXLData(days: number = 90): Promise<MarketData[]> {
-    try {
-      const response = await fetch(`/api/yahoo-finance?symbol=SOXL&period=${days}d`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return this.parseYahooHistorical(data);
-    } catch (error) {
-      console.error('과거 데이터 조회 실패:', error);
-      throw error;
-    }
+    return this.getHistory('SOXL', days);
   }
 
-  private static parseYahooData(data: YahooFinanceResponse): RealtimeQuote {
+  /**
+   * 가격은 반올림하지 않는다 (과거 SOXL은 $1 미만이라 반올림이 수익률을 왜곡한다).
+   * 정규장이 아직 끝나지 않은 오늘 봉은 종가가 아니므로 버린다.
+   */
+  static parseYahooHistorical(data: YahooFinanceResponse, nowSec: number, adjusted = false): MarketData[] {
     const result = data.chart?.result?.[0];
-    const meta = result?.meta;
-    const quote = result?.indicators?.quote?.[0];
-    
-    if (!meta || !quote) {
-      throw new Error('Invalid Yahoo Finance data');
-    }
-
-    const currentPrice = meta.regularMarketPrice;
-    const previousClose = meta.previousClose;
-    const change = currentPrice - previousClose;
-    const changePercent = (change / previousClose) * 100;
-
-    return {
-      price: Number(currentPrice.toFixed(2)),
-      change: Number(change.toFixed(2)),
-      changePercent: Number(changePercent.toFixed(2)),
-      volume: meta.regularMarketVolume || 0,
-      timestamp: new Date(meta.regularMarketTime * 1000),
-      high: Number((meta.regularMarketDayHigh || currentPrice).toFixed(2)),
-      low: Number((meta.regularMarketDayLow || currentPrice).toFixed(2)),
-      open: Number((meta.regularMarketPrice || currentPrice).toFixed(2)),
-    };
-  }
-
-  private static parseYahooHistorical(data: YahooFinanceResponse): MarketData[] {
-    const result = data.chart?.result?.[0];
-    
     if (!result) {
       throw new Error('Invalid Yahoo Finance historical data');
     }
 
     const timestamps = result.timestamp || [];
-    const quotes = result.indicators?.quote?.[0] || {};
-    const { open = [], high = [], low = [], close = [], volume = [] } = quotes;
+    const { open = [], high = [], low = [], close: rawClose = [], volume = [] } = result.indicators?.quote?.[0] || {};
+    const close = (adjusted && result.indicators?.adjclose?.[0]?.adjclose) || rawClose;
+    const session = result.meta?.currentTradingPeriod?.regular;
 
-    return timestamps.map((timestamp: number, index: number) => {
-      const date = new Date(timestamp * 1000);
-      const currentPrice = close[index] || 0;
-      const prevPrice = index > 0 ? close[index - 1] : currentPrice;
-      const change = currentPrice - prevPrice;
-      const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-
-      return {
-        date: date.toISOString().split('T')[0],
-        price: Number(currentPrice.toFixed(2)),
-        change: Number(change.toFixed(2)),
-        changePercent: Number(changePercent.toFixed(2)),
+    const out: MarketData[] = [];
+    timestamps.forEach((timestamp, index) => {
+      const price = close[index];
+      if (price == null) return;
+      const inProgress = session && timestamp >= session.start && nowSec < session.end;
+      if (inProgress) return;
+      const prevPrice = out.length > 0 ? out[out.length - 1].price : price;
+      out.push({
+        date: new Date(timestamp * 1000).toISOString().split('T')[0],
+        price,
+        change: price - prevPrice,
+        changePercent: prevPrice > 0 ? ((price - prevPrice) / prevPrice) * 100 : 0,
         volume: volume[index] || 0,
-        high: Number((high[index] || currentPrice).toFixed(2)),
-        low: Number((low[index] || currentPrice).toFixed(2)),
-        open: Number((open[index] || currentPrice).toFixed(2)),
-      };
+        high: high[index] ?? price,
+        low: low[index] ?? price,
+        open: open[index] ?? price,
+      });
     });
+    return out;
   }
 }

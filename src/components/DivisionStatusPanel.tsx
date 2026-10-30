@@ -177,7 +177,7 @@ export const DivisionStatusPanel: React.FC<DivisionStatusPanelProps> = ({
   }));
 
   return (
-    <Card title="📊 5분할 상태 대시보드" style={{ marginBottom: 16 }}>
+    <Card title={`📊 ${divisionPortfolios.length}분할 상태`} style={{ marginBottom: 16 }}>
       <Table
         dataSource={dataSource}
         columns={columns}

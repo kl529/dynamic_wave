@@ -1,234 +1,67 @@
-# 프로젝트 아키텍처
+# 구조
 
-> 동파법 SOXL 매매 시스템의 전체 구조를 설명합니다.
+## 원칙
 
-## 디렉토리 구조
+**백테스트와 실전 신호는 같은 함수로 계산한다.** 검증 스크립트(`scripts/research/`)는 앱의 `src/` 코드를 그대로 import 한다. 실전 신호 함수는 "다음 정규장에 할 일"을 돌려주고, 백테스트는 같은 판단을 하루 늦춰 체결한다. 이 일치는 테스트로 고정돼 있다 (`src/__tests__/lib`, `src/__tests__/utils/weeklyMode.test.ts`).
+
+## 디렉토리
 
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── page.tsx           # 메인 페이지 (오늘 매매)
-│   ├── backtest/          # 백테스팅 페이지
-│   │   └── page.tsx
-│   ├── layout.tsx         # 레이아웃
+├── app/
+│   ├── page.tsx                 메인: 추천 전략 · 동파법 · 매매 기록 · 설정 탭
+│   ├── backtest/page.tsx        백테스트: 추천 전략(strategyBacktest) · 동파법(DivisionEngine)
+│   ├── login/page.tsx
 │   └── api/
-│       └── yahoo-finance/ # Yahoo Finance API 프록시
-│           └── route.ts
-│
-├── components/            # React 컴포넌트
-│   ├── TodayOverview.tsx        # 오늘 개요
-│   ├── TodaySignalPanel.tsx     # 매매 신호 패널
-│   ├── DivisionStatusPanel.tsx  # 분할 상태
-│   ├── ConfigPanel.tsx          # 설정 패널
-│   ├── TradeRecordForm.tsx      # 거래 기록 입력
-│   ├── TradeRecordList.tsx      # 거래 기록 목록
-│   ├── CurrentInvestmentStatus.tsx  # 현재 투자 상태
-│   ├── BacktestPanel.tsx        # 백테스트 패널
-│   ├── BacktestConfigPanel.tsx  # 백테스트 설정
-│   ├── BacktestDebugTable.tsx   # 백테스트 상세 테이블
-│   ├── BacktestStatsDashboard.tsx # 백테스트 통계
-│   ├── BacktestResultsChart.tsx # 백테스트 차트
-│   ├── DongpaTradeTable.tsx     # 거래 테이블
-│   ├── RealtimePanel.tsx        # 실시간 패널
-│   ├── RSIModeIndicator.tsx     # RSI 모드 표시
-│   └── PWAInstallPrompt.tsx     # PWA 설치 안내
-│
-├── services/              # 비즈니스 로직
-│   ├── dongpaEngine.ts         # 동파법 메인 엔진
-│   ├── divisionEngine.ts       # 분할 매매 엔진
-│   ├── marketDataService.ts    # 시장 데이터 서비스
-│   ├── supabaseService.ts      # Supabase 연동
-│   └── notifications.ts        # 알림 서비스
-│
-├── hooks/                 # Custom Hooks
-│   ├── useDongpaEngine.ts      # 동파법 엔진 훅
-│   └── useRSIMode.ts           # RSI 모드 훅
-│
-├── utils/                 # 유틸리티
-│   ├── tradingConfig.ts        # 매매 설정
-│   ├── rsiCalculator.ts        # RSI 계산
-│   └── divisionStateCalculator.ts # 분할 상태 계산
-│
-├── types/                 # TypeScript 타입
-│   └── index.ts
-│
-└── lib/                   # 라이브러리 설정
-    └── supabase.ts
+│       ├── auth/login/          비밀번호 확인 → 해시 쿠키 발급
+│       ├── db/trade-records/    매매 기록 CRUD (PostgreSQL, 입력 검증, 전체 조회)
+│       └── yahoo-finance/       시세 프록시 (SOXL, ^NDX, QLD만 허용)
+├── middleware.ts                로그인 쿠키 확인 (페이지와 API 모두)
+├── lib/
+│   ├── strategy.ts              ★ 추천 전략 정의와 실전 신호 (strategySignal, todayOrder)
+│   ├── strategyBacktest.ts      추천 전략 백테스트 (앱 백테스팅 화면)
+│   ├── backtest.ts              목표 비중 시뮬레이션·신호 지연·세금·지표 (앱과 scripts/research 공용)
+│   ├── trend.ts                 SMA, 추세 신호, 추세 앙상블
+│   ├── dongpaOrders.ts          동파법 다음 정규장 LOC/MOC 주문표
+│   ├── marketTime.ts            NYSE 휴장일, 다음 정규장 날짜
+│   ├── authToken.ts             로그인 쿠키 값 (SHA-256)
+│   └── supabase.ts              매매 기록 타입 (파일명은 예전 이름)
+├── services/
+│   ├── divisionEngine.ts        ★ 동파법·하이브리드 백테스트 엔진
+│   ├── marketDataService.ts     확정 일봉 조회 (장중 봉 제외, 반올림 없음)
+│   └── supabaseService.ts       브라우저 → /api/db/trade-records 호출
+├── utils/
+│   ├── rsiCalculator.ts         주간 RSI와 모드 (완료된 주만 사용)
+│   ├── tradingConfig.ts         동파법 모드별 파라미터, 수수료
+│   └── divisionStateCalculator.ts  매매 기록 → 분할 상태
+├── hooks/                       useMarketHistory, useRSIMode
+└── components/                  화면 컴포넌트
+
+scripts/
+├── research/                    ★ 전략 검증 (bun으로 실행)
+│   ├── lib.ts                   데이터 로드, 합성 레버리지, 동파법 실행 (계산은 src/lib/backtest.ts 재사용)
+│   ├── run.ts                   전체 스터디 → docs/validation/results.{md,json}
+│   ├── tune.ts                  파라미터 조정 검증 → docs/validation/tuning.{md,json}
+│   ├── chart.ts                 자산 곡선 SVG
+│   └── crosscheck_vectorbt.py   vectorbt 독립 재현 → docs/validation/crosscheck.md
+└── archive/                     2026-04 이전 스크립트 (수치 무효, docs/archive/README.md)
 ```
 
----
-
-## 핵심 모듈
-
-### 1. 매매 엔진
-
-#### DongpaEngine (`services/dongpaEngine.ts`)
-단일 포트폴리오 방식의 동파법 엔진
-
-```typescript
-class DongpaEngine {
-  // 거래 히스토리 생성
-  generateTradeHistory(data: MarketData[]): DongpaTrade[]
-  
-  // 오늘 매매 신호
-  getTodayTradingSignals(...): TodaySignal
-  
-  // 전략 정보
-  getStrategyInfo(): {...}
-}
-```
-
-#### DivisionEngine (`services/divisionEngine.ts`)
-5분할 독립 운영 방식의 매매 엔진
-
-```typescript
-class DivisionEngine {
-  // 분할 초기화
-  initializeDivisions(): DivisionPortfolio[]
-  
-  // 재분할
-  rebalanceDivisions(...): DivisionPortfolio[]
-  
-  // 일별 매매 처리
-  processDailyTrade(...): DailyTradeRecord
-  
-  // 백테스팅
-  backtest(data: MarketData[]): DailyTradeRecord[]
-  
-  // 오늘 신호
-  getTodaySignals(...): {...}
-}
-```
-
-### 2. 데이터 흐름
+## 데이터 흐름
 
 ```
-Yahoo Finance API
-       ↓
-marketDataService.ts (데이터 파싱)
-       ↓
-useDongpaEngine.ts (훅)
-       ↓
-   ┌───┴───┐
-   ↓       ↓
-page.tsx  divisionEngine.ts
-(UI)      (백테스팅)
+야후 일봉 → /api/yahoo-finance → marketDataService (확정 봉만)
+  ├─ ^NDX 400일 → strategySignal → 추천 전략 탭 (목표 비중, 주문 수량)
+  ├─ QLD 5일    → 주문 수량 계산용 가격
+  └─ SOXL 1000일 → useRSIMode(완료된 주 RSI) + 매매 기록 → dongpaOrders → 동파법 탭 주문표
+
+매매 기록: 브라우저 → /api/db/trade-records (미들웨어 인증 + 입력 검증) → PostgreSQL (홈랩)
 ```
 
-### 3. 상태 관리
+## 타이밍 규칙
 
-```
-localStorage
-├── dongpaConfig       # 사용자 설정
-└── tradeRecords       # 거래 기록
-
-Supabase (Optional)
-├── trade_records      # 거래 기록
-├── user_settings      # 사용자 설정
-└── backtest_results   # 백테스트 결과
-```
-
----
-
-## 매매 로직
-
-### 매수 조건
-
-```
-안전모드: 전일 대비 -3.0% 이하
-공세모드: 전일 대비 -5.0% 이하
-```
-
-### 매도 조건
-
-```
-안전모드: 평단가 대비 +0.2% 이상 또는 30거래일 경과
-공세모드: 평단가 대비 +2.5% 이상 또는 7거래일 경과
-```
-
-### LOC (Limit-On-Close) 주문
-
-```
-1. 장 마감 전 전일 종가 기준으로 매매 신호 계산
-2. 지정가 주문 제출 (종가에 체결)
-3. 당일 종가에서 조건 충족 시 체결
-```
-
----
-
-## 모드 시스템
-
-### 수동 모드
-- `safe`: 안전모드 고정
-- `aggressive`: 공세모드 고정
-
-### 자동 모드 (`auto`)
-RSI 기반 자동 모드 전환:
-- RSI < 30: `aggressive` (과매도)
-- RSI > 70: `safe` (과매수)
-- 30 ≤ RSI ≤ 70: `safe` (기본값)
-
----
-
-## 수수료 구조
-
-```typescript
-// src/utils/tradingConfig.ts
-export const FEES = {
-  commission: 0.00044,  // 0.044% 거래 수수료
-  secFee: 0.0000278     // 0.00278% SEC 수수료
-};
-
-// 총 수수료율 (편도): 0.047%
-```
-
----
-
-## 주요 타입
-
-```typescript
-// 설정
-interface DongpaConfig {
-  initialCapital: number;  // 초기 자본
-  divisions: number;       // 분할 수 (기본 5)
-  mode: 'safe' | 'aggressive' | 'auto';
-  rebalancePeriod: number; // 재분할 주기 (거래일)
-}
-
-// 분할 포트폴리오
-interface DivisionPortfolio {
-  divisionNumber: number;
-  status: 'EMPTY' | 'HOLDING';
-  cash: number;
-  holdings: number;
-  avgPrice: number;
-  buyDate: string;
-  // ...
-}
-
-// 일별 거래 기록
-interface DailyTradeRecord {
-  date: string;
-  closePrice: number;
-  changeRate: number;
-  mode: 'safe' | 'aggressive';
-  divisionActions: DivisionAction[];
-  // ...
-}
-```
-
----
-
-## API 엔드포인트
-
-### `/api/yahoo-finance`
-
-Yahoo Finance 데이터 프록시
-
-```
-GET /api/yahoo-finance?symbol=SOXL
-→ 실시간 시세
-
-GET /api/yahoo-finance?symbol=SOXL&period=90d
-→ 90일 과거 데이터
-```
+| 대상 | 판단에 쓰는 정보 | 체결 |
+|---|---|---|
+| 추천 전략 | t일 ^NDX 확정 종가 | t+1일 종가 (MOC/LOC). 목표 비중이 바뀐 날만 매매 |
+| 동파법 매수·매도 | t-1일 종가, 평단, 보유일 | t일 종가 (LOC 조건 충족 시) |
+| 동파법 모드 | 지난주까지 완료된 주간 RSI | 그 주 내내 고정 |
