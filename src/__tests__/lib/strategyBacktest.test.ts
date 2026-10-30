@@ -13,7 +13,7 @@ describe('strategyBacktest', () => {
   const index = days(900, '2020-01-01', i => 100 * 1.001 ** i);       // 꾸준히 오르는 지수
   const product = index.slice(400).map(b => ({ ...b, price: b.price * 2 }));
   const spy = index.map(b => ({ ...b }));
-  const base = { product: 'QLD' as const, periods: [100, 150, 200, 250, 300], weekly: false, tax: false, from: '2019-01-01', to: '2099-12-31', capital: 10000 };
+  const base = { product: 'QLD' as const, periods: [100, 150, 200, 250, 300], volFilter: false, weekly: false, tax: false, fee: 0.00047, from: '2019-01-01', to: '2099-12-31', capital: 10000 };
 
   it('시작일은 이동평균 워밍업·상품 상장일 이후로 밀린다', () => {
     expect(effectiveStart(base, { index, product, spy })).toBe(product[0].date);
@@ -25,6 +25,15 @@ describe('strategyBacktest', () => {
     const [strategy, hold] = r.lines;
     expect(r.exposure.every(e => e.value === 1)).toBe(true);
     expect(strategy.final).toBeCloseTo(hold.final, 6);
+  });
+
+  it('변동성 필터를 켜면 어느 날도 비중이 늘지 않는다', () => {
+    let x = 5;
+    const noisy = index.map((b, i) => { x = (x * 16807) % 2147483647; return { ...b, price: b.price * (1 + ((x / 2147483647) - 0.5) * (i > 600 ? 0.1 : 0.02)) }; });
+    const off = strategyBacktest(base, { index: noisy, product, spy }).exposure;
+    const on = strategyBacktest({ ...base, volFilter: true }, { index: noisy, product, spy }).exposure;
+    on.forEach((e, i) => expect(e.value).toBeLessThanOrEqual(off[i].value + 1e-12));
+    expect(on.some((e, i) => e.value < off[i].value)).toBe(true);
   });
 
   it('세금을 켜면 최종 자산이 줄어든다 (청산 시 22%)', () => {

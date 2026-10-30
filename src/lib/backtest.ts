@@ -4,7 +4,7 @@
  */
 import { isoWeekKey } from '@/utils/rsiCalculator';
 import { getTotalFeeRate } from '@/utils/tradingConfig';
-import { trendEnsemble, trendSignals } from '@/lib/trend';
+import { filteredEnsemble, trendEnsemble, trendSignals } from '@/lib/trend';
 
 export type Series = { date: string; price: number }[];
 /** shares/equity는 수수료만 반영된 세전 값 */
@@ -55,6 +55,11 @@ export function runExposure(s: Series, exposure: number[], fee = FEE, cashRatePc
 export function trendExposure(traded: Series, signalSrc: Series, n: number): number[] {
   const sig = trendSignals(signalSrc.map(b => b.price), n);
   return lagOnto(traded, signalSrc, sig.map(s => (s ? 1 : 0)));
+}
+
+/** 추세 앙상블 × 변동성 필터 보유비중 (20%p 단위). 다음 거래일 종가에 맞춘다 */
+export function filteredExposure(traded: Series, signalSrc: Series, periods: number[], volWindow = 20, step = 5): number[] {
+  return lagOnto(traded, signalSrc, filteredEnsemble(signalSrc.map(b => b.price), periods, volWindow, step));
 }
 
 /** 추세 앙상블 보유비중: 여러 SMA 중 위에 있는 비율만큼 다음 거래일 종가에 보유 */

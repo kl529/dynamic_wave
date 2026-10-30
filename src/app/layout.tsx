@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: '동파 — 매매 신호',
-  description: '나스닥100 2배 추세 전략과 동파법 SOXL 매매 신호, 백테스팅',
+  description: '나스닥100 3배 추세 + 변동성 필터 전략과 동파법 SOXL 매매 신호, 백테스팅',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192x192.png',

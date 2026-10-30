@@ -17,8 +17,8 @@ const PERIOD_SETS: { label: string; value: string; periods: number[] }[] = [
 ];
 const PRODUCTS: { label: string; value: Product }[] = [
   { label: 'QQQ (나스닥100 1배)', value: 'QQQ' },
-  { label: 'QLD (2배, 기본)', value: 'QLD' },
-  { label: 'TQQQ (3배)', value: 'TQQQ' },
+  { label: 'QLD (2배)', value: 'QLD' },
+  { label: 'TQQQ (3배, 기본)', value: 'TQQQ' },
 ];
 // dataviz 기준 팔레트 1~3번 (색각 검사 통과)
 const COLORS = { strategy: '#2a78d6', hold: '#eb6834', spy: '#1baf7a' };
@@ -31,7 +31,9 @@ type Result = ReturnType<typeof strategyBacktest>;
 export const StrategyBacktest: React.FC = () => {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs('2006-07-01'), dayjs()]);
   const [capital, setCapital] = useState(10000);
-  const [product, setProduct] = useState<Product>('QLD');
+  const [product, setProduct] = useState<Product>('TQQQ');
+  const [volFilter, setVolFilter] = useState(true);
+  const [fee, setFee] = useState(0.0009);
   const [periodSet, setPeriodSet] = useState('default');
   const [weekly, setWeekly] = useState(false);
   const [tax, setTax] = useState(true);
@@ -43,17 +45,17 @@ export const StrategyBacktest: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // 시작일 이전 이동평균 계산분(최대 350거래일)까지 받는다
+      // 지수는 전체 기록(변동성 필터 중앙값을 처음부터 누적), 상품·S&P500은 시작일 이전 여유분까지
       const days = Math.ceil((dayjs().diff(range[0], 'day') * 5) / 7) + 450;
       const [index, prod, spy] = await Promise.all([
-        MarketDataService.getHistory('^NDX', days),
+        MarketDataService.getHistory('^NDX', 12000),
         MarketDataService.getHistory(product, days, true),
         MarketDataService.getHistory('SPY', days, true),
       ]);
       const toSeries = (d: { date: string; price: number }[]) => d.map(({ date, price }) => ({ date, price }));
       setResult(strategyBacktest(
         {
-          product, periods: PERIOD_SETS.find(p => p.value === periodSet)!.periods, weekly, tax,
+          product, periods: PERIOD_SETS.find(p => p.value === periodSet)!.periods, volFilter, weekly, tax, fee,
           from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), capital,
         },
         { index: toSeries(index), product: toSeries(prod), spy: toSeries(spy) }
@@ -81,7 +83,7 @@ export const StrategyBacktest: React.FC = () => {
     <>
       <Card title="추세 전략 백테스트" style={{ marginBottom: 16 }} styles={{ body: { padding: 16 } }}>
         <Row gutter={[12, 12]} align="bottom">
-          <Col xs={24} md={8} lg={6}>
+          <Col xs={24} md={8} lg={4}>
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>기간</div>
             <DatePicker.RangePicker
               value={range}
@@ -91,7 +93,7 @@ export const StrategyBacktest: React.FC = () => {
               allowClear={false}
             />
           </Col>
-          <Col xs={12} md={4} lg={3}>
+          <Col xs={12} md={4} lg={2}>
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>시작 자금</div>
             <InputNumber value={capital} min={100} step={1000} prefix="$" onChange={v => setCapital(v ?? 10000)} style={{ width: '100%' }} />
           </Col>
@@ -99,7 +101,7 @@ export const StrategyBacktest: React.FC = () => {
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>상품</div>
             <Select value={product} options={PRODUCTS} onChange={setProduct} style={{ width: '100%' }} />
           </Col>
-          <Col xs={12} md={4}>
+          <Col xs={12} md={4} lg={3}>
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>
               이동평균{' '}
               <Tooltip title="종가가 이 이동평균들 중 몇 개 위에 있는지의 비율만큼 보유합니다. 구성을 바꿔도 결과 차이는 작았습니다 (docs/validation/tuning.md).">
@@ -109,14 +111,27 @@ export const StrategyBacktest: React.FC = () => {
             <Select value={periodSet} options={PERIOD_SETS.map(({ label, value }) => ({ label, value }))} onChange={setPeriodSet} style={{ width: '100%' }} />
           </Col>
           <Col xs={12} md={4} lg={3}>
+            <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>
+              변동성 필터{' '}
+              <Tooltip title="최근 20일 변동성이 과거 중앙값보다 높으면 그 비율만큼 비중을 줄입니다 (20%p 단위).">
+                <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
+              </Tooltip>
+            </div>
+            <Segmented block value={volFilter ? '켬' : '끔'} options={['켬', '끔']} onChange={v => setVolFilter(v === '켬')} />
+          </Col>
+          <Col xs={12} md={4} lg={2}>
+            <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>수수료</div>
+            <Select value={fee} onChange={setFee} style={{ width: '100%' }} options={[{ label: '0.09%', value: 0.0009 }, { label: '0.25%', value: 0.0025 }, { label: '0.047%', value: 0.00047 }]} />
+          </Col>
+          <Col xs={12} md={4} lg={3}>
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>비중 조정</div>
             <Segmented block value={weekly ? '주 1회' : '매일'} options={['매일', '주 1회']} onChange={v => setWeekly(v === '주 1회')} />
           </Col>
-          <Col xs={12} md={4} lg={3}>
+          <Col xs={12} md={4} lg={2}>
             <div style={{ fontSize: 12, color: '#595959', marginBottom: 4 }}>양도세 22%</div>
             <Segmented block value={tax ? '반영' : '제외'} options={['반영', '제외']} onChange={v => setTax(v === '반영')} />
           </Col>
-          <Col xs={24} md={4} lg={2}>
+          <Col xs={12} md={4} lg={2}>
             <Button type="primary" icon={<PlayCircleOutlined />} loading={loading} onClick={run} block>실행</Button>
           </Col>
         </Row>
@@ -129,7 +144,7 @@ export const StrategyBacktest: React.FC = () => {
           <Card
             title={`${result.from} ~ ${result.to}`}
             extra={
-              <Tooltip title={`${product} 상장일 이전은 실제 데이터가 없어 여기서는 볼 수 없습니다. 상장 전(합성)까지 넣은 1995~2026 검증에서는 QLD 그냥 보유가 닷컴 붕괴 때 -99%였고, 추세 전략은 -70%였습니다.`}>
+              <Tooltip title={`${product} 상장일 이전은 실제 데이터가 없어 여기서는 볼 수 없습니다. 상장 전(합성)까지 넣은 1995~2026 검증에서는 닷컴 붕괴 때 TQQQ 그냥 보유는 -99% 이상(사실상 전액 손실), TQQQ 추세 + 변동성 필터는 -53%였습니다.`}>
                 <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
               </Tooltip>
             }

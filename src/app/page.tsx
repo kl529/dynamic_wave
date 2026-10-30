@@ -90,9 +90,9 @@ export default function Home() {
     }
   };
 
-  // 추천 전략: ^NDX 300일 이동평균까지 필요. 동파법: 주간 RSI 수렴을 위해 4년치
-  const ndx = useMarketHistory('^NDX', 400);
-  const qld = useMarketHistory('QLD', 5);
+  // 추천 전략: 변동성 필터의 과거 중앙값을 백테스트와 같게 구하려면 ^NDX 전체 기록(1985~)이 필요. 동파법: 주간 RSI 수렴용 4년치
+  const ndx = useMarketHistory('^NDX', 12000);
+  const product = useMarketHistory('TQQQ', 5);
   const soxl = useMarketHistory('SOXL', 1000);
   const signal = useMemo(() => strategySignal(ndx.data), [ndx.data]);
   const historicalData = soxl.data;
@@ -131,9 +131,9 @@ export default function Home() {
       children: (
         <StrategySignalCard
           signal={signal}
-          tradePrice={qld.data[qld.data.length - 1]?.price ?? null}
+          tradePrice={product.data[product.data.length - 1]?.price ?? null}
           loading={ndx.loading}
-          error={ndx.error ?? qld.error}
+          error={ndx.error ?? product.error}
         />
       )
     },
@@ -355,7 +355,7 @@ export default function Home() {
               <Text type="secondary" style={{ fontSize: '12px' }}>
                 본 시스템은 교육 및 분석 목적으로 제작되었습니다. 
                 실제 투자 결정은 개인의 책임이며, 투자에 따른 손실에 대해 개발자는 책임지지 않습니다. 
-                QLD(2배)·SOXL(3배) 같은 레버리지 ETF는 변동성이 커서 큰 손실이 날 수 있습니다.
+                TQQQ·SOXL(3배) 같은 레버리지 ETF는 변동성이 커서 큰 손실이 날 수 있습니다.
               </Text>
             </div>
           }

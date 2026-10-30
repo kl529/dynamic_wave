@@ -2,6 +2,18 @@
 
 ---
 
+## [2026-10-30 밤] 추천 전략을 TQQQ 추세 + 변동성 필터로 전환
+
+- 사용자 결정으로 3차 검증 통과안 채택: 목표 비중 = 추세 앙상블 비율 × min(1, ^NDX 20일 변동성 과거 중앙값 ÷ 현재), 20%p 단위. 세후 20.6%, MDD -61% (수수료 0.09%)
+- `src/lib/trend.ts`: `volScale`, `realizedVol`, `filteredEnsemble` (앱·검증 스크립트 공용). `scripts/research/improve.ts`도 이 함수를 쓴다 — 결과 동일 확인
+- 앱 추천 전략 탭: TQQQ, 계산 과정(추세 × 변동성) 표시, ^NDX 전체 기록 사용. 실데이터 1,139개 세션에서 앱 신호 = 백테스트 비중
+- 백테스팅: 기본 TQQQ, 변동성 필터·수수료(0.09/0.25/0.047%) 선택 추가
+- 변동성 0인 데이터에서 0÷0이 나던 가장자리 처리
+- 비중 조절표(TQQQ 전략 + S&P500) 추가: 50/50이 연 17.2%, MDD -54%로 기본 제안
+- 문서: README, GUIDE, STRATEGY(결론·5~7·11장), ARCHITECTURE
+
+---
+
 ## [2026-10-30 저녁] 개선 후보 검증, 4월 PostgreSQL 이전분과 통합, 문서 정리
 
 - `scripts/research/improve.ts`: 변동성 필터·단기국채(SGOV)·TQQQ를 실제 수수료(0.047/0.09/0.25%), SGOV 양방향 매매 비용, 국채 이자 세금까지 넣어 검증 → `docs/validation/improvements.md`

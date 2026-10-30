@@ -1,9 +1,10 @@
 /**
- * 추천 전략(추세 앙상블) 백테스트. 앱 백테스팅 화면이 쓰고, 계산은 검증 스크립트와 같은 함수다.
- * 신호: ^NDX 종가가 이동평균들 위에 있는 비율 → 다음 거래일 종가에 상품 비중을 맞춘다.
+ * 추천 전략 백테스트. 앱 백테스팅 화면이 쓰고, 계산은 검증 스크립트와 같은 함수다.
+ * 신호: ^NDX 종가가 이동평균들 위에 있는 비율 (× 변동성 필터) → 다음 거래일 종가에 상품 비중을 맞춘다.
+ * 변동성 필터의 과거 중앙값은 지수 데이터 처음부터 누적하므로, index 는 가능한 한 긴 기록을 넣는다.
  */
 import {
-  Series, Stats, applyTax, ensembleExposure, runExposure, sliceRun, stats, trendExposure, weeklyOnly,
+  Series, Stats, applyTax, ensembleExposure, filteredExposure, runExposure, sliceRun, stats, trendExposure, weeklyOnly,
 } from '@/lib/backtest';
 
 export type Product = 'QQQ' | 'QLD' | 'TQQQ';
@@ -11,7 +12,9 @@ export type Product = 'QQQ' | 'QLD' | 'TQQQ';
 export interface StrategyBacktestInput {
   product: Product;
   periods: number[];
+  volFilter: boolean; // 변동성 필터
   weekly: boolean;   // 주 1회만 조정
+  fee: number;       // 매매 수수료 (편도)
   tax: boolean;      // 양도세 22% (연 실현이익, 마지막 날 청산)
   from: string;
   to: string;
@@ -38,13 +41,15 @@ export function strategyBacktest(input: StrategyBacktestInput, data: { index: Se
   const from = effectiveStart(input, data);
   const ones = (s: Series) => s.map(() => 1);
   const product = data.product;
-  let exposure = input.periods.length === 1
-    ? trendExposure(product, data.index, input.periods[0])
-    : ensembleExposure(product, data.index, input.periods);
+  let exposure = input.volFilter
+    ? filteredExposure(product, data.index, input.periods)
+    : input.periods.length === 1
+      ? trendExposure(product, data.index, input.periods[0])
+      : ensembleExposure(product, data.index, input.periods);
   if (input.weekly) exposure = weeklyOnly(product, exposure);
 
   const line = (key: BacktestLine['key'], s: Series, exp: number[]): BacktestLine => {
-    const run = sliceRun(runExposure(s, exp), from, input.to);
+    const run = sliceRun(runExposure(s, exp, input.fee), from, input.to);
     const taxed = input.tax ? applyTax(run, TAX_RATE) : { equity: run.equity, finalAfterTax: run.equity[run.equity.length - 1] };
     return {
       key, dates: run.dates,

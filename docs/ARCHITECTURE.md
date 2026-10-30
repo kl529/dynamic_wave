@@ -18,10 +18,10 @@ src/
 │       └── yahoo-finance/       시세 프록시 (SOXL, ^NDX, QLD만 허용)
 ├── middleware.ts                로그인 쿠키 확인 (페이지와 API 모두)
 ├── lib/
-│   ├── strategy.ts              ★ 추천 전략 정의와 실전 신호 (strategySignal, todayOrder)
+│   ├── strategy.ts              ★ 추천 전략(TQQQ 추세 + 변동성 필터) 정의와 실전 신호 (strategySignal, todayOrder)
 │   ├── strategyBacktest.ts      추천 전략 백테스트 (앱 백테스팅 화면)
 │   ├── backtest.ts              목표 비중 시뮬레이션·신호 지연·세금·지표 (앱과 scripts/research 공용)
-│   ├── trend.ts                 SMA, 추세 신호, 추세 앙상블
+│   ├── trend.ts                 SMA, 추세 앙상블, 변동성 필터 (volScale, filteredEnsemble)
 │   ├── dongpaOrders.ts          동파법 다음 정규장 LOC/MOC 주문표
 │   ├── marketTime.ts            NYSE 휴장일, 다음 정규장 날짜
 │   ├── authToken.ts             로그인 쿠키 값 (SHA-256)
@@ -52,8 +52,8 @@ scripts/
 
 ```
 야후 일봉 → /api/yahoo-finance → marketDataService (확정 봉만)
-  ├─ ^NDX 400일 → strategySignal → 추천 전략 탭 (목표 비중, 주문 수량)
-  ├─ QLD 5일    → 주문 수량 계산용 가격
+  ├─ ^NDX 전체 기록 → strategySignal → 추천 전략 탭 (목표 비중, 주문 수량). 변동성 중앙값이 1985년부터 누적이라 전체가 필요
+  ├─ TQQQ 5일   → 주문 수량 계산용 가격
   └─ SOXL 1000일 → useRSIMode(완료된 주 RSI) + 매매 기록 → dongpaOrders → 동파법 탭 주문표
 
 매매 기록: 브라우저 → /api/db/trade-records (미들웨어 인증 + 입력 검증) → PostgreSQL (홈랩)

@@ -10,7 +10,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Run, Series, Stats, applyTax, ensembleExposure, ffillOn, loadUniverse, periodStats, stats, trendExposure, trimRun } from './lib';
+import { Run, Series, Stats, applyTax, ensembleExposure, ffillOn, filteredExposure, loadUniverse, periodStats, stats, trendExposure, trimRun } from './lib';
 import { STRATEGY } from '../../src/lib/strategy';
 
 const OUT = join(import.meta.dir, '../../docs/validation');
@@ -19,30 +19,6 @@ const MAIN_FEE = 0.0009; // 나무증권 Open API 해외주식 수수료 (보도
 const pct = (x: number, d = 1) => (Number.isFinite(x) ? `${(x * 100).toFixed(d)}%` : '-');
 const md = (head: string[], rows: (string | number)[][]) =>
   [`| ${head.join(' | ')} |`, `|${head.map(() => '---').join('|')}|`, ...rows.map(r => `| ${r.join(' | ')} |`)].join('\n');
-
-/** ^NDX n일 실현변동성(연율)과 그날까지의 중앙값 → 비중 축소 비율 min(1, 중앙값/현재). 그날 종가까지의 정보만 쓴다 */
-function volScale(index: Series, n: number): number[] {
-  const r = index.map((b, i) => (i ? Math.log(b.price / index[i - 1].price) : 0));
-  const sorted: number[] = [];
-  return r.map((_, i) => {
-    let v = NaN;
-    if (i >= n) {
-      const w = r.slice(i - n + 1, i + 1), m = w.reduce((a, b) => a + b, 0) / n;
-      v = Math.sqrt(w.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1)) * Math.sqrt(252);
-      let k = sorted.findIndex(x => x > v);
-      if (k < 0) k = sorted.length;
-      sorted.splice(k, 0, v);
-    }
-    const med = sorted.length > 250 ? sorted[Math.floor(sorted.length / 2)] : NaN;
-    return Number.isNaN(med) || Number.isNaN(v) ? 1 : Math.min(1, med / v);
-  });
-}
-
-/** 지수 날짜의 값을 거래 날짜에 맞추고 하루 늦춘다 (src/lib/backtest.ts lagOnto 와 같은 규칙) */
-function lagged(traded: Series, src: Series, values: number[], init: number): number[] {
-  let j = -1;
-  return traded.map(b => { while (j + 1 < src.length && src[j + 1].date < b.date) j++; return j >= 0 ? values[j] : init; });
-}
 
 /** 목표 비중이 바뀐 날만 매매. sgov=true 면 현금이 단기국채 이자(세후)를 받고, 매매 때 국채 쪽도 같이 사고판다 */
 function sim(s: Series, exp: number[], fee: number, sgov: boolean, rates: number[]): Run {
@@ -95,6 +71,8 @@ function drawdowns(dates: string[], eq: number[], threshold: number) {
   return out;
 }
 
+const fi0 = () => FEES.indexOf(MAIN_FEE);
+
 async function main() {
   const u = await loadUniverse(false);
   const ndx = u.ndx;
@@ -104,11 +82,8 @@ async function main() {
   const build = (sym: string, opts: { filter: boolean; win?: number; periods?: number[]; step?: number }) => {
     const s = u.spliced[sym];
     const periods = opts.periods ?? P;
-    const base = periods.length === 1 ? trendExposure(s, ndx, periods[0]) : ensembleExposure(s, ndx, periods);
-    if (!opts.filter) return base;
-    const scale = lagged(s, ndx, volScale(ndx, opts.win ?? 20), 1);
-    const step = opts.step ?? 5;
-    return base.map((e, t) => Math.round(e * scale[t] * step) / step);
+    if (opts.filter) return filteredExposure(s, ndx, periods, opts.win ?? 20, opts.step ?? 5); // 앱과 같은 함수
+    return periods.length === 1 ? trendExposure(s, ndx, periods[0]) : ensembleExposure(s, ndx, periods);
   };
   const ratesOf = (sym: string) => ffillOn(u.spliced[sym].map(b => b.date), u.irx);
 
@@ -165,7 +140,25 @@ async function main() {
     return { name, years, d20: count(0.2), d30: count(0.3), d40: count(0.4), d50: count(0.5), timeBelow20: below / e.equity.length, worst: drawdowns(e.dates, e.equity, 0.3) };
   });
 
-  // ── 6. 보고서 ──
+  // ── 6. 비중 조절: TQQQ + 변동성 필터 + S&P500 보유, 매년 초 리밸런싱 (세후 곡선 근사, 마지막 청산세 제외) ──
+  const tq = main.find(m => m.name === 'TQQQ + 변동성 필터')!.byFee[fi0()];
+  const spyMap = new Map(bench.spy.dates.map((d, i) => [d, bench.spy.equity[i]]));
+  const tqMap = new Map(tq.dates.map((d, i) => [d, tq.equity[i]]));
+  const bDates = tq.dates.filter(d => spyMap.has(d));
+  const blends = [1, 0.7, 0.5, 0.3, 0].map(w => {
+    let va = w, vb = 1 - w;
+    const eq = bDates.map((d, t) => {
+      if (t > 0) { va *= tqMap.get(d)! / tqMap.get(bDates[t - 1])!; vb *= spyMap.get(d)! / spyMap.get(bDates[t - 1])!; }
+      const v = va + vb;
+      if (t < bDates.length - 1 && bDates[t + 1].slice(0, 4) !== d.slice(0, 4)) { va = v * w; vb = v * (1 - w); }
+      return v;
+    });
+    let peak = eq[0], below = 0;
+    for (const v of eq) { peak = Math.max(peak, v); if (v / peak - 1 <= -0.2) below++; }
+    return { w, s: stats(bDates, eq), d30: drawdowns(bDates, eq, 0.3).length, timeBelow20: below / eq.length };
+  });
+
+  // ── 7. 보고서 ──
   const fi = FEES.indexOf(MAIN_FEE);
   const report = `# 개선 후보 검증 (변동성 필터 · 단기국채 · TQQQ)
 
@@ -210,7 +203,14 @@ ${md(['방법', '전체 CAGR', '전체 MDD', '1986~1995 CAGR', '1986~1995 MDD'],
 ${md(['방법', '-20% 이상', '-30% 이상', '-40% 이상', '-50% 이상', '고점 대비 -20% 아래에 있던 시간'],
   freq.map(f => [f.name, `${f.d20}번`, `${f.d30}번`, `${f.d40}번`, `${f.d50}번`, pct(f.timeBelow20, 0)]))}
 
--30% 이상 빠진 구간 (고점 → 저점, 회복까지):
+## 6. 비중 조절: TQQQ + 변동성 필터 + S&P500 보유 (1995-03 ~, 수수료 0.09%, 매년 초 리밸런싱)
+
+세후 연간 곡선을 합친 근사치다. 마지막 청산 세금은 빼고 계산해 1장 표보다 조금 높다.
+
+${md(['TQQQ 전략 비중', 'CAGR', 'MDD', 'Sharpe', '최악 연도', '-30% 이상 하락', '고점 대비 -20% 아래 시간'],
+  blends.map(b => [pct(b.w, 0), pct(b.s.cagr), pct(b.s.mdd), b.s.sharpe.toFixed(2), pct(b.s.worstYear), `${b.d30}번`, pct(b.timeBelow20, 0)]))}
+
+## 7. -30% 이상 빠진 구간 (고점 → 저점, 회복까지)
 
 ${freq.map(f => `**${f.name}**\n\n${f.worst.length ? md(['고점', '저점', '깊이', '회복', '고점부터 회복까지'], f.worst.map(w => [w.peak, w.trough, pct(w.depth), w.recovered ?? '미회복', `${w.months}개월`])) : '없음'}`).join('\n\n')}
 `;
@@ -223,6 +223,7 @@ ${freq.map(f => `**${f.name}**\n\n${f.worst.length ? md(['고점', '저점', '�
     bench: Object.fromEntries(Object.entries(bench).map(([k, e]) => [k, { full: e.full, oos: e.oos, real: e.real }])),
     robust: robust.map(r => ({ cand: r.cand, name: r.name, full: r.e.full, oos: r.e.oos, real: r.e.real })),
     long: long.map(l => ({ name: l.name, full: l.e.full, pre95: l.e.pre95 })), freq,
+    blends: blends.map(b => ({ w: b.w, full: b.s, d30: b.d30, timeBelow20: b.timeBelow20 })),
   }));
   console.log(report);
 }
