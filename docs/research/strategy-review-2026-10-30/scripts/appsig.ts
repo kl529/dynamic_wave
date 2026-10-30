@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { MarketDataService } from '/Users/lyvakim/personal/side_projects/dongpa/src/services/marketDataService';
+import { strategySignal, STRATEGY } from '/Users/lyvakim/personal/side_projects/dongpa/src/lib/strategy';
+import { filteredEnsemble } from '/Users/lyvakim/personal/side_projects/dongpa/src/lib/trend';
+const S = process.argv[2];
+const raw = JSON.parse(readFileSync(`${S}/dl/ndx_app.json`, 'utf8'));
+const data = MarketDataService.parseYahooHistorical(raw, Date.now() / 1000);
+const sig = strategySignal(data)!;
+console.log(JSON.stringify({ n: data.length, first: data[0].date, ...sig }, null, 1));
+const tgt = filteredEnsemble(data.map(d => d.price), [...STRATEGY.periods], STRATEGY.volWindow);
+writeFileSync(`${S}/app_targets.json`, JSON.stringify(data.map((d, i) => [d.date, tgt[i]])));

@@ -57,3 +57,7 @@ logs
 .cache
 tmp
 temp
+
+# 점검 스크립트가 받은 원본 시세·파이썬 캐시
+docs/research/*/scripts/dl/
+__pycache__
