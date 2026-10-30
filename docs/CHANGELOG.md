@@ -2,6 +2,18 @@
 
 ---
 
+## [2026-10-30 저녁] 개선 후보 검증, 4월 PostgreSQL 이전분과 통합, 문서 정리
+
+- `scripts/research/improve.ts`: 변동성 필터·단기국채(SGOV)·TQQQ를 실제 수수료(0.047/0.09/0.25%), SGOV 양방향 매매 비용, 국채 이자 세금까지 넣어 검증 → `docs/validation/improvements.md`
+  - TQQQ + 변동성 필터가 4개 기준을 모두 통과 (세후 20.6%, MDD -61%, 수수료 0.09%). -30% 이상 하락이 40년간 16번. 채택은 결정 대기
+  - SGOV는 수수료 0.09% 이상에서 이득이 없어 쓰지 않는다
+  - 앞서 보고한 "①+② 연 16.4%"는 SGOV 매매 비용과 이자 세금을 빠뜨린 값이었다. 정정: 0.047%에서 15.8%
+- 2026-04-18 커밋(Supabase → 로컬 PostgreSQL, Docker 배포) 위로 정리: Supabase 라우트 대신 `/api/db/trade-records`에 입력 검증·전체 조회, `db_schema.sql`·`docs/DB_SETUP.md`로 이름 변경
+- NH 나무증권 기준 주문 방법(MOC, 장 마감 20분 전)과 수수료 안내를 `GUIDE.md`에 추가
+- `README.md`에 현재 상태와 남은 결정 정리
+
+---
+
 ## [2026-10-30 오후] 추천 전략 백테스트 화면, 파라미터 조정 검증, 교차 검증
 
 - 백테스팅 화면에 `추천 전략 (QLD 추세)` 추가: 기간·시작 자금·상품(QQQ/QLD/TQQQ)·이동평균 구성·조정 주기·양도세를 바꿔 실행. 계산은 검증 스크립트와 같은 `src/lib/strategyBacktest.ts`

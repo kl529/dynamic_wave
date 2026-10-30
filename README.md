@@ -16,6 +16,18 @@
 
 왜 이 전략인지, 기존 동파법·하이브리드가 왜 탈락했는지, 위험은 무엇인지는 [`docs/STRATEGY.md`](./docs/STRATEGY.md)에 있다. 전체 검증 표는 [`docs/validation/results.md`](./docs/validation/results.md)다.
 
+**검토 중인 개선안: TQQQ + 변동성 필터.** 3차 탐색에서 4개 기준을 모두 통과했다. 세후 연 20.6%, 최대 낙폭 -61%(수수료 0.09% 기준). 대신 -30% 이상 하락이 평균 2.5년마다 왔다. 채택하면 앱 신호를 바꾼다 ([`docs/STRATEGY.md` 11장](./docs/STRATEGY.md#11-개선-후보-변동성-필터와-tqqq-3차-탐색)).
+
+## 현재 상태 (2026-10-30)
+
+| 항목 | 상태 |
+|---|---|
+| 매매 방식 | NH 나무증권에서 직접 **MOC(장마감 시장가)** 주문. 장 마감 20분 전까지(한국 시간 겨울 05:40) |
+| 코드 | 브랜치 `feat/qld-trend-strategy`에 push. main 병합과 홈랩 반영은 아직 |
+| 운영 | 홈랩 Docker + 로컬 PostgreSQL (2026-04부터, Vercel 아님). 반영: `git pull && docker compose up -d --build` |
+| DB | 분할 번호 1~5 제한을 풀려면 [`db_schema.sql`](./db_schema.sql) 아래 마이그레이션 SQL 실행 (동파법을 계속 쓸 때만) |
+| 남은 결정 | TQQQ + 변동성 필터 채택 여부, 나무증권 해외주식 수수료 우대 요율 확인 |
+
 ## 앱
 
 | 탭 | 내용 |
@@ -43,6 +55,7 @@ npm run dev                  # http://localhost:3000
 | `npm run build` | 프로덕션 빌드 |
 | `bun scripts/research/run.ts [--refresh]` | 전략 검증 전체 재실행 → `docs/validation/results.{md,json}` |
 | `bun scripts/research/tune.ts` | 파라미터 조정 검증 → `docs/validation/tuning.{md,json}` |
+| `bun scripts/research/improve.ts` | 개선 후보 검증 → `docs/validation/improvements.{md,json}` |
 
 환경 변수는 [`.env.example`](./.env.example), DB와 홈랩 Docker 배포는 [`docs/DB_SETUP.md`](./docs/DB_SETUP.md)를 본다.
 
@@ -54,6 +67,8 @@ npm run dev                  # http://localhost:3000
 | [`docs/validation/results.md`](./docs/validation/results.md) | 자동 생성 검증 결과 전체 |
 | [`docs/validation/tuning.md`](./docs/validation/tuning.md) | 파라미터 조정 검증 (동파법 900개 조합, 추세 민감도) |
 | [`docs/validation/crosscheck.md`](./docs/validation/crosscheck.md) | vectorbt 독립 재현 |
+| [`docs/validation/improvements.md`](./docs/validation/improvements.md) | 개선 후보 (변동성 필터·SGOV·TQQQ·실제 수수료·낙폭 빈도) |
+| [`docs/research/trading-repos-2026-10-30.md`](./docs/research/trading-repos-2026-10-30.md) | 자동매매·백테스트 오픈소스 27개 비교 |
 | [`GUIDE.md`](./GUIDE.md) | 매일 할 일과 주문 방법 |
 | [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | 코드 구조와 타이밍 규칙 |
 | [`docs/CHANGELOG.md`](./docs/CHANGELOG.md) | 변경 이력 |

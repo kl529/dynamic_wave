@@ -42,6 +42,7 @@ scripts/
 │   ├── lib.ts                   데이터 로드, 합성 레버리지, 동파법 실행 (계산은 src/lib/backtest.ts 재사용)
 │   ├── run.ts                   전체 스터디 → docs/validation/results.{md,json}
 │   ├── tune.ts                  파라미터 조정 검증 → docs/validation/tuning.{md,json}
+│   ├── improve.ts               개선 후보 (변동성 필터·SGOV·TQQQ·수수료·낙폭 빈도) → docs/validation/improvements.{md,json}
 │   ├── chart.ts                 자산 곡선 SVG
 │   └── crosscheck_vectorbt.py   vectorbt 독립 재현 → docs/validation/crosscheck.md
 └── archive/                     2026-04 이전 스크립트 (수치 무효, docs/archive/README.md)
